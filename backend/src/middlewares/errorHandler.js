@@ -36,7 +36,7 @@ const errorHandler = (err, req, res, next) => {
     const mensajes = Object.values(err.errors).map((e) => e.message);
     return res.status(400).json({
       ok: false,
-      error: 'Error de validación en MongoDB',
+      error: mensajes.length > 0 ? mensajes.join('. ') : 'Error de validación en los datos',
       detalles: mensajes,
     });
   }

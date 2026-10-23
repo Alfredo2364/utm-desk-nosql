@@ -1,7 +1,127 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Incidencia = require('../models/Incidencia');
+const Usuario = require('../models/Usuario');
+const Edificio = require('../models/Edificio');
 const connectDB = require('../config/db');
+
+const demoUsuarios = [
+  {
+    nombre: 'Alumno Daniel García',
+    email: 'alumno.garcia@utm.mx',
+    rol: 'reportante',
+    area: 'general',
+    cargo: 'Estudiante de Ing. en Computación',
+    departamento_carrera: 'Ingeniería en Computación',
+    activo: true,
+  },
+  {
+    nombre: 'Ing. Roberto Méndez',
+    email: 'tecnico.redes@utm.mx',
+    rol: 'tecnico',
+    area: 'computo_telecomunicaciones',
+    cargo: 'Especialista en Redes y Telecomunicaciones',
+    id_tecnico: 'TEC-UTM-092',
+    departamento_carrera: 'Infraestructura Tecnológica',
+    activo: true,
+  },
+  {
+    nombre: 'Téc. Marco Peña',
+    email: 'tecnico.infra@utm.mx',
+    rol: 'tecnico',
+    area: 'infraestructura_mantenimiento',
+    cargo: 'Técnico de Mantenimiento e Instalaciones',
+    id_tecnico: 'TEC-UTM-018',
+    departamento_carrera: 'Mantenimiento General',
+    activo: true,
+  },
+  {
+    nombre: 'Ing. Daniela Soto',
+    email: 'tecnico.sistemas@utm.mx',
+    rol: 'tecnico',
+    area: 'sistemas_servicios_academicos',
+    cargo: 'Ingeniera de Plataformas Web y SICE',
+    id_tecnico: 'TEC-UTM-045',
+    departamento_carrera: 'Servicios de Cómputo Académico',
+    activo: true,
+  },
+  {
+    nombre: 'Ing. Carlos Mendoza',
+    email: 'supervisor.campus@utm.mx',
+    rol: 'supervisor',
+    area: 'general',
+    cargo: 'Supervisor General de Operaciones de Campus',
+    departamento_carrera: 'Coordinación de Operaciones',
+    activo: true,
+  },
+  {
+    nombre: 'Dra. Patricia Arango',
+    email: 'directora.academica@utm.mx',
+    rol: 'directivo',
+    area: 'general',
+    cargo: 'Directora de División y Planeación Universitaria',
+    departamento_carrera: 'Dirección Académica',
+    activo: true,
+  },
+  {
+    nombre: 'Administrador Maestro UTM',
+    email: 'admin.sistemas@utm.mx',
+    rol: 'admin',
+    area: 'general',
+    cargo: 'Administrador General del Sistema NoSQL',
+    departamento_carrera: 'Tecnologías de la Información',
+    activo: true,
+  },
+];
+
+const demoEdificios = [
+  {
+    codigo: 'EDIF-A',
+    nombre: 'Edificio A - Tecnologías de la Información',
+    descripcion: 'Aulas de cómputo, laboratorios de redes, desarrollo de software y telecomunicaciones.',
+    pisos: 3,
+    responsable: 'Coordinación de Computación',
+    aulas: [
+      { codigo: 'L-01', nombre: 'Laboratorio de Cómputo L-01', tipo: 'laboratorio', piso: 'Piso 1', capacidad: 35 },
+      { codigo: 'L-02', nombre: 'Laboratorio de Redes y Telecomunicaciones L-02', tipo: 'laboratorio', piso: 'Piso 2', capacidad: 30 },
+      { codigo: 'SRV-01', nombre: 'Centro de Datos y Servidores Centrales', tipo: 'taller', piso: 'Piso 1', capacidad: 10 },
+    ],
+  },
+  {
+    codigo: 'EDIF-B',
+    nombre: 'Edificio B - Ciencias Básicas',
+    descripcion: 'Aulas de tronco común, física, matemáticas y química.',
+    pisos: 2,
+    responsable: 'Coordinación de Ciencias Básicas',
+    aulas: [
+      { codigo: 'B-101', nombre: 'Aula Magna B-101', tipo: 'auditorio', piso: 'Planta Baja', capacidad: 120 },
+      { codigo: 'B-201', nombre: 'Aula Teórica B-201', tipo: 'aula', piso: 'Piso 2', capacidad: 45 },
+      { codigo: 'LAB-FIS', nombre: 'Laboratorio de Física Experimental', tipo: 'laboratorio', piso: 'Piso 1', capacidad: 30 },
+    ],
+  },
+  {
+    codigo: 'EDIF-D',
+    nombre: 'Edificio D - Aulas Generales',
+    descripcion: 'Aulas inteligentes y talleres de electrónica y mecatrónica.',
+    pisos: 2,
+    responsable: 'Coordinación de Aulas Multimedia',
+    aulas: [
+      { codigo: 'D-204', nombre: 'Aula Inteligente D-204', tipo: 'aula', piso: 'Piso 2', capacidad: 40 },
+      { codigo: 'D-205', nombre: 'Aula de Seminarios D-205', tipo: 'aula', piso: 'Piso 2', capacidad: 35 },
+    ],
+  },
+  {
+    codigo: 'EDIF-CEN',
+    nombre: 'Edificio Central - Rectoría y Control Escolar',
+    descripcion: 'Oficinas directivas, servicios escolares, biblioteca y finanzas.',
+    pisos: 2,
+    responsable: 'Secretaría General',
+    aulas: [
+      { codigo: 'ESC-03', nombre: 'Ventanilla 3 de Control Escolar', tipo: 'oficina_administrativa', piso: 'Piso 1', capacidad: 15 },
+      { codigo: 'DIR-01', nombre: 'Sala de Juntas de Rectoría', tipo: 'oficina_administrativa', piso: 'Piso 2', capacidad: 25 },
+    ],
+  },
+];
 
 const demoIncidencias = [
   {
@@ -18,10 +138,18 @@ const demoIncidencias = [
       referencias: 'Rack principal de telecomunicaciones, costado norte del laboratorio.',
     },
     reportante: {
-      nombre: 'Dr. Alejandro Morales Ramos',
-      email: 'amorales@utm.mx',
-      rol: 'docente',
+      nombre: 'Alumno Daniel García',
+      email: 'alumno.garcia@utm.mx',
+      rol: 'estudiante',
       departamento_carrera: 'Ingeniería en Computación',
+    },
+    tecnico_asignado: {
+      nombre: 'Ing. Roberto Méndez',
+      email: 'tecnico.redes@utm.mx',
+      id_tecnico: 'TEC-UTM-092',
+      area: 'computo_telecomunicaciones',
+      fecha_asignacion: new Date(Date.now() - 20 * 3600 * 1000),
+      asignado_por: 'Ing. Carlos Mendoza (SUPERVISOR)',
     },
     detalle: {
       tipo_dispositivo: 'Switch Administrable Capa 3',
@@ -57,7 +185,7 @@ const demoIncidencias = [
         supabase_path: 'incidencias/UTM-2026-0001/evidencia_switch_leds.png',
         url_firmada: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=1200&q=80',
         url_expira: new Date(Date.now() + 6 * 24 * 3600 * 1000),
-        subido_por: 'Dr. Alejandro Morales Ramos',
+        subido_por: 'Alumno Daniel García',
         fecha_subida: new Date(Date.now() - 24 * 3600 * 1000),
       },
     ],
@@ -80,6 +208,14 @@ const demoIncidencias = [
       email: 'svalenzuela@utm.mx',
       rol: 'docente',
       departamento_carrera: 'Tronco Común Universitario',
+    },
+    tecnico_asignado: {
+      nombre: 'Téc. Marco Peña',
+      email: 'tecnico.infra@utm.mx',
+      id_tecnico: 'TEC-UTM-018',
+      area: 'infraestructura_mantenimiento',
+      fecha_asignacion: new Date(Date.now() - 2 * 3600 * 1000),
+      asignado_por: 'Asignación Automática por Área',
     },
     detalle: {
       tipo_servicio: 'plomeria_fontaneria',
@@ -112,7 +248,7 @@ const demoIncidencias = [
     estado: 'pendiente_revision',
     prioridad: 'alta',
     ubicacion: {
-      edificio: 'Edificio Central - Servicios Escolares y Rectoría',
+      edificio: 'Edificio Central - Rectoría y Control Escolar',
       aula_laboratorio: 'Ventanilla 3 de Control Escolar',
       piso: 'Piso 1',
       referencias: 'Módulo de Titulación y Certificación.',
@@ -123,8 +259,16 @@ const demoIncidencias = [
       rol: 'administrativo',
       departamento_carrera: 'Departamento de Servicios Escolares',
     },
+    tecnico_asignado: {
+      nombre: 'Ing. Daniela Soto',
+      email: 'tecnico.sistemas@utm.mx',
+      id_tecnico: 'TEC-UTM-045',
+      area: 'sistemas_servicios_academicos',
+      fecha_asignacion: new Date(Date.now() - 6 * 3600 * 1000),
+      asignado_por: 'Ing. Carlos Mendoza (SUPERVISOR)',
+    },
     detalle: {
-      plataforma: 'SICE (Sistema Integral de Control Escolar)',
+      plataforma: 'SICE',
       modulo_afectado: 'Módulo de Firma Electrónica y Cierre de Actas',
       matricula_estudiante_afectado: 'Global (Afecta a 124 alumnos del grupo 802-A)',
       url_modulo: 'https://sice.utm.mx/escolares/actas/firma-criptografica',
@@ -179,6 +323,14 @@ const demoIncidencias = [
       rol: 'docente',
       departamento_carrera: 'Ingeniería en Mecatrónica',
     },
+    tecnico_asignado: {
+      nombre: 'Ing. Roberto Méndez',
+      email: 'tecnico.redes@utm.mx',
+      id_tecnico: 'TEC-UTM-092',
+      area: 'computo_telecomunicaciones',
+      fecha_asignacion: new Date(Date.now() - 48 * 3600 * 1000),
+      asignado_por: 'Auto-asignación',
+    },
     detalle: {
       tipo_dispositivo: 'Videoproyector Láser Multimedia',
       marca_modelo: 'Epson PowerLite L520U',
@@ -189,6 +341,7 @@ const demoIncidencias = [
       software_afectado: 'Ninguno (Falla física)',
       tipo_falla_red: 'falla_hardware',
     },
+    fecha_resolucion: new Date(Date.now() - 36 * 3600 * 1000), // Resuelto en 12 horas (MTTR)
     revisiones: [
       {
         fecha_revision: new Date(Date.now() - 48 * 3600 * 1000),
@@ -219,6 +372,98 @@ const demoIncidencias = [
     ],
     evidencias_adjuntas: [],
   },
+  {
+    codigo: 'UTM-2026-0005',
+    titulo: 'Caída de Access Point y desconexión masiva en Laboratorio L-02',
+    descripcion: 'Segunda falla registrada esta semana en el Laboratorio L-02. El punto de acceso Cisco Meraki reinicia continuamente por falta de potencia PoE.',
+    categoria: 'computo_telecomunicaciones',
+    estado: 'abierta',
+    prioridad: 'critica',
+    ubicacion: {
+      edificio: 'Edificio A - Tecnologías de la Información',
+      aula_laboratorio: 'Laboratorio de Redes y Telecomunicaciones L-02',
+      piso: 'Piso 2',
+      referencias: 'Techo del laboratorio, sector central.',
+    },
+    reportante: {
+      nombre: 'Alumno Daniel García',
+      email: 'alumno.garcia@utm.mx',
+      rol: 'estudiante',
+      departamento_carrera: 'Ingeniería en Computación',
+    },
+    tecnico_asignado: {
+      nombre: 'Ing. Roberto Méndez',
+      email: 'tecnico.redes@utm.mx',
+      id_tecnico: 'TEC-UTM-092',
+      area: 'computo_telecomunicaciones',
+      fecha_asignacion: new Date(Date.now() - 1 * 3600 * 1000),
+      asignado_por: 'Ing. Carlos Mendoza (SUPERVISOR)',
+    },
+    detalle: {
+      tipo_dispositivo: 'Access Point Wi-Fi 6',
+      marca_modelo: 'Cisco Catalyst 9115AX',
+      numero_serie_activo: 'UTM-AP-2024-0019',
+      direccion_ip: '10.20.4.15',
+      mac_address: '00:26:08:9A:BC:DE',
+      sistema_operativo: 'Cisco AP-COS',
+      tipo_falla_red: 'intermitencia',
+    },
+    revisiones: [],
+    evidencias_adjuntas: [],
+  },
+  {
+    codigo: 'UTM-2026-0006',
+    titulo: 'Cortocircuito y parpadeo de luminarias LED en Aula Magna B-101',
+    descripcion: 'Se percibe olor a quemado y zumbido eléctrico en la caja de térmicos del Aula Magna. Reincidencia de problemas en el circuito de iluminación.',
+    categoria: 'infraestructura_mantenimiento',
+    estado: 'resuelta',
+    prioridad: 'alta',
+    ubicacion: {
+      edificio: 'Edificio B - Ciencias Básicas',
+      aula_laboratorio: 'Aula Magna B-101',
+      piso: 'Planta Baja',
+      referencias: 'Tablero eléctrico de control escénico.',
+    },
+    reportante: {
+      nombre: 'Mtra. Sofía Valenzuela Cruz',
+      email: 'svalenzuela@utm.mx',
+      rol: 'docente',
+      departamento_carrera: 'Tronco Común Universitario',
+    },
+    tecnico_asignado: {
+      nombre: 'Téc. Marco Peña',
+      email: 'tecnico.infra@utm.mx',
+      id_tecnico: 'TEC-UTM-018',
+      area: 'infraestructura_mantenimiento',
+      fecha_asignacion: new Date(Date.now() - 72 * 3600 * 1000),
+      asignado_por: 'Asignación Automática',
+    },
+    detalle: {
+      tipo_servicio: 'electricidad',
+      tipo_dano: 'Termomagnético de 30A sulfatado y falso contacto',
+      nivel_urgencia: 'urgente',
+      requiere_corte_suministro: true,
+      tipo_suministro_afectado: 'energia_electrica',
+      afecta_seguridad_personal: false,
+    },
+    fecha_resolucion: new Date(Date.now() - 50 * 3600 * 1000), // Resuelto en 22 horas (MTTR)
+    revisiones: [
+      {
+        fecha_revision: new Date(Date.now() - 50 * 3600 * 1000),
+        tecnico: {
+          nombre: 'Téc. Marco Peña',
+          id_tecnico: 'TEC-UTM-018',
+          departamento: 'Mantenimiento General',
+        },
+        diagnostico: 'Reemplazo de pastilla termomagnética y reapriete de peines de alimentación.',
+        estado_anterior: 'en_progreso',
+        estado_asignado: 'resuelta',
+        accion_realizada: 'Sustitución de breaker y pruebas de carga.',
+        observaciones: 'Circuito normalizado.',
+      },
+    ],
+    evidencias_adjuntas: [],
+  },
 ];
 
 const seedDatabase = async () => {
@@ -229,13 +474,26 @@ const seedDatabase = async () => {
       return false;
     }
 
-    console.log('🧹 [Seed] Limpiando colección incidencias_campus...');
-    await Incidencia.deleteMany({});
+    console.log('🧹 [Seed] Limpiando colecciones anteriores...');
+    await Promise.all([
+      Incidencia.deleteMany({}),
+      Usuario.deleteMany({}),
+      Edificio.deleteMany({}),
+    ]);
 
-    console.log('🌱 [Seed] Insertando incidencias de demostración polimórficas...');
+    console.log('🌱 [Seed] Insertando usuarios RBAC...');
+    await Usuario.insertMany(demoUsuarios);
+
+    console.log('🏢 [Seed] Insertando catálogo de edificios y aulas...');
+    await Edificio.insertMany(demoEdificios);
+
+    console.log('📋 [Seed] Insertando incidencias polimórficas con trazabilidad RBAC...');
     await Incidencia.insertMany(demoIncidencias);
 
-    console.log(`✅ [Seed] ¡${demoIncidencias.length} incidencias insertadas exitosamente!`);
+    console.log(`✅ [Seed] ¡Base de datos poblada exitosamente!`);
+    console.log(`   • ${demoUsuarios.length} usuarios con roles RBAC`);
+    console.log(`   • ${demoEdificios.length} edificios con aulas`);
+    console.log(`   • ${demoIncidencias.length} incidencias para analítica`);
     return true;
   } catch (error) {
     console.error('❌ [Seed] Error al sembrar datos:', error.message);
@@ -252,6 +510,8 @@ if (require.main === module) {
 }
 
 module.exports = {
+  demoUsuarios,
+  demoEdificios,
   demoIncidencias,
   seedDatabase,
 };

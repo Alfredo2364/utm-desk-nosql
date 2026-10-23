@@ -10,12 +10,16 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export default function TimelineReviews({ revisiones = [], onAddRevision, isSubmitting }) {
+  const { currentUser, rol } = useAuth();
+  const canAddReview = rol === 'tecnico' || rol === 'supervisor' || rol === 'admin';
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
-    tecnico_nombre: '',
-    tecnico_id: '',
+    tecnico_nombre: currentUser?.nombre || '',
+    tecnico_id: currentUser?.id_tecnico || 'TEC-UTM',
     diagnostico: '',
     estado_asignado: 'en_progreso',
     accion_realizada: '',
@@ -28,8 +32,8 @@ export default function TimelineReviews({ revisiones = [], onAddRevision, isSubm
 
     await onAddRevision(formData);
     setFormData({
-      tecnico_nombre: '',
-      tecnico_id: '',
+      tecnico_nombre: currentUser?.nombre || '',
+      tecnico_id: currentUser?.id_tecnico || 'TEC-UTM',
       diagnostico: '',
       estado_asignado: 'en_progreso',
       accion_realizada: '',
@@ -66,14 +70,16 @@ export default function TimelineReviews({ revisiones = [], onAddRevision, isSubm
             Línea de Tiempo de Revisiones ({revisiones.length})
           </h3>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors"
-        >
-          <PlusCircle className="w-3.5 h-3.5" />
-          <span>{showForm ? 'Ocultar Formulario' : 'Agregar Diagnóstico / Revisión'}</span>
-          {showForm ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-        </button>
+        {canAddReview && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-200 transition-colors"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>{showForm ? 'Ocultar Formulario' : 'Agregar Diagnóstico / Revisión'}</span>
+            {showForm ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        )}
       </div>
 
       {/* Formulario desplegable para agregar revisión */}

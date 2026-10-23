@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X,
   PlusCircle,
@@ -12,8 +12,10 @@ import {
   User,
 } from 'lucide-react';
 import { createIncidencia } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated }) {
+  const { currentUser } = useAuth();
   const [categoria, setCategoria] = useState('computo_telecomunicaciones');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
@@ -27,11 +29,23 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
     aula_laboratorio: 'Laboratorio de Cómputo L-01',
     piso: 'Piso 1',
     referencias: '',
-    reportante_nombre: '',
-    reportante_email: '',
-    reportante_rol: 'estudiante',
-    reportante_departamento: '',
+    reportante_nombre: currentUser?.nombre || '',
+    reportante_email: currentUser?.email || '',
+    reportante_rol: currentUser?.rol === 'reportante' ? 'estudiante' : currentUser?.rol || 'estudiante',
+    reportante_departamento: currentUser?.departamento_carrera || '',
   });
+
+  useEffect(() => {
+    if (currentUser) {
+      setFormData((prev) => ({
+        ...prev,
+        reportante_nombre: currentUser.nombre || '',
+        reportante_email: currentUser.email || '',
+        reportante_rol: currentUser.rol === 'reportante' ? 'estudiante' : currentUser.rol || 'estudiante',
+        reportante_departamento: currentUser.departamento_carrera || '',
+      }));
+    }
+  }, [currentUser]);
 
   // Campos polimórficos
   const [detalleComputo, setDetalleComputo] = useState({

@@ -144,7 +144,6 @@ const incidenciaSchema = new mongoose.Schema(
       email: { type: String, required: true },
       rol: {
         type: String,
-        enum: ['estudiante', 'docente', 'administrativo', 'tecnico'],
         default: 'estudiante',
       },
       departamento_carrera: { type: String, default: 'General' },
@@ -183,6 +182,21 @@ const incidenciaSchema = new mongoose.Schema(
     // Subdocumentos Embebidos
     revisiones: [revisionSchema],
     evidencias_adjuntas: [evidenciaSchema],
+    // Técnico asignado para RBAC
+    tecnico_asignado: {
+      id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
+      nombre: { type: String, default: null },
+      email: { type: String, default: null },
+      id_tecnico: { type: String, default: null },
+      area: { type: String, default: null },
+      fecha_asignacion: { type: Date, default: null },
+      asignado_por: { type: String, default: null },
+    },
+    // Fecha en la que la incidencia pasó a 'resuelta' (para métricas MTTR)
+    fecha_resolucion: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
