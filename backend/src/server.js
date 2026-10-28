@@ -28,7 +28,8 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({
     ok: true,
     sistema: 'UTM Desk NoSQL Cloud API',
-    version: '1.2.0 (RBAC Matriz)',
+    version: '1.3.0 (RBAC + Respaldo NoSQL)',
+    respaldoNoSQL: true,
     estado: 'Servicio Activo con RBAC',
     usuarioActual: req.user ? { email: req.user.email, rol: req.user.rol } : null,
     servicios: {
