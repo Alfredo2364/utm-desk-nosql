@@ -6,12 +6,12 @@ const multer = require('multer');
 const errorHandler = (err, req, res, next) => {
   console.error(`💥 [Error Handler]:`, err);
 
-  // Errores propios de Multer
+  // Errores propios de Multer (RF-06 y RNF-06 exigen HTTP 400 cuando excede 5MB)
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({
+      return res.status(400).json({
         ok: false,
-        error: 'El archivo excede el límite máximo de 5MB.',
+        error: 'El archivo excede el límite máximo permitido de 5MB.',
         code: 'LIMIT_FILE_SIZE',
       });
     }

@@ -8,18 +8,20 @@ const getMetricasGenerales = async (req, res, next) => {
   try {
     const total = await Incidencia.countDocuments();
     const abiertas = await Incidencia.countDocuments({ estado: 'abierta' });
-    const enProgreso = await Incidencia.countDocuments({ estado: 'en_progreso' });
+    const asignadas = await Incidencia.countDocuments({ estado: 'asignada' });
+    const enProgreso = await Incidencia.countDocuments({
+      estado: { $in: ['en_proceso', 'en_progreso'] },
+    });
     const pendientes = await Incidencia.countDocuments({ estado: 'pendiente_revision' });
     const resueltas = await Incidencia.countDocuments({ estado: 'resuelta' });
     const cerradas = await Incidencia.countDocuments({ estado: 'cerrada' });
     const criticas = await Incidencia.countDocuments({ prioridad: 'critica' });
     const altas = await Incidencia.countDocuments({ prioridad: 'alta' });
 
-    // Tasa de resolución
     const totalResueltasOCerradas = resueltas + cerradas;
-    const tasaResolucion = total > 0 ? ((totalResueltasOCerradas / total) * 100).toFixed(1) : '0.0';
+    const tasaResolucion =
+      total > 0 ? ((totalResueltasOCerradas / total) * 100).toFixed(1) : '0.0';
 
-    // Distribución por categoría polimórfica
     const porCategoria = await Incidencia.aggregate([
       {
         $group: {
@@ -40,6 +42,7 @@ const getMetricasGenerales = async (req, res, next) => {
       kpis: {
         total,
         abiertas,
+        asignadas,
         enProgreso,
         pendientes,
         resueltas,
@@ -56,68 +59,116 @@ const getMetricasGenerales = async (req, res, next) => {
 };
 
 /**
- * GET /api/analitica/mttr
- * Cálculo de MTTR (Mean Time to Resolution - Tiempo Medio de Resolución)
+ * RF-07 | GET /api/analitica/tiempo-medio (y /api/analitica/mttr)
+ * Aggregation Pipeline en el servidor de base de datos:
+ * $match de resueltas, $group por edificio y $avg de tiempoResolucionMin.
  */
 const getMTTR = async (req, res, next) => {
   try {
+    // 1. Aggregation Pipeline oficial RF-07 en MongoDB Atlas: $match -> $group por edificio -> $avg de tiempoResolucionMin
+    const porEdificio = await Incidencia.aggregate([
+      {
+        $match: {
+          estado: { $in: ['resuelta', 'cerrada'] },
+        },
+      },
+      {
+        $addFields: {
+          edificioClave: {
+            $ifNull: ['$ubicacion.edificioId', '$ubicacion.edificio'],
+          },
+          minutosCalculados: {
+            $ifNull: [
+              '$tiempoResolucionMin',
+              {
+                $divide: [
+                  {
+                    $subtract: [
+                      { $ifNull: ['$fechaResolucion', { $ifNull: ['$fecha_resolucion', '$updatedAt'] }] },
+                      { $ifNull: ['$fechaReporte', '$createdAt'] },
+                    ],
+                  },
+                  60000,
+                ],
+              },
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: '$edificioClave',
+          edificioNombre: { $first: '$ubicacion.edificio' },
+          promedioResolucionMin: { $avg: '$minutosCalculados' },
+          totalResueltas: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          edificioId: '$_id',
+          edificio: { $ifNull: ['$edificioNombre', '$_id'] },
+          tiempoPromedioMin: { $round: ['$promedioResolucionMin', 1] },
+          tiempoPromedioHoras: {
+            $round: [{ $divide: ['$promedioResolucionMin', 60] }, 1],
+          },
+          totalResueltas: 1,
+        },
+      },
+      { $sort: { tiempoPromedioMin: 1 } },
+    ]);
+
+    // 2. Aggregation Pipeline por categoría y global
     const resueltas = await Incidencia.find({
       estado: { $in: ['resuelta', 'cerrada'] },
-    }).select('codigo titulo categoria prioridad createdAt fecha_resolucion updatedAt revisiones');
+    }).select(
+      'codigo titulo categoria prioridad createdAt fechaReporte fechaResolucion fecha_resolucion tiempoResolucionMin updatedAt revisiones'
+    );
 
     if (resueltas.length === 0) {
       return res.status(200).json({
         ok: true,
+        mttrMinutos: 0,
         mttrHoras: 0,
         mttrDias: 0,
         totalCasosAnalizados: 0,
-        mensaje: 'Aún no hay incidencias resueltas para calcular el MTTR.',
+        porEdificio: [],
         mttrPorCategoria: {},
       });
     }
 
-    let sumaMilisegundos = 0;
+    let sumaMinutos = 0;
     const tiemposPorCategoria = {};
 
     resueltas.forEach((inc) => {
-      const inicio = new Date(inc.createdAt).getTime();
-      let fin = inc.fecha_resolucion ? new Date(inc.fecha_resolucion).getTime() : null;
-
-      // Si no tiene fecha_resolucion explícita, buscar en la última revisión
-      if (!fin && inc.revisiones && inc.revisiones.length > 0) {
-        const revResolucion = inc.revisiones.slice().reverse().find(
-          (r) => r.estado_asignado === 'resuelta' || r.estado_asignado === 'cerrada'
-        );
-        if (revResolucion) {
-          fin = new Date(revResolucion.fecha_revision).getTime();
-        }
+      let min = inc.tiempoResolucionMin;
+      if (min == null) {
+        const inicio = new Date(inc.fechaReporte || inc.createdAt).getTime();
+        const fin = new Date(
+          inc.fechaResolucion || inc.fecha_resolucion || inc.updatedAt
+        ).getTime();
+        min = Math.max(1, Math.round((fin - inicio) / 60000));
       }
+      sumaMinutos += min;
 
-      // Fallback a updatedAt
-      if (!fin) {
-        fin = new Date(inc.updatedAt).getTime();
-      }
-
-      const duracionMs = Math.max(0, fin - inicio);
-      sumaMilisegundos += duracionMs;
-
-      // Agrupar por categoría
       if (!tiemposPorCategoria[inc.categoria]) {
-        tiemposPorCategoria[inc.categoria] = { sumaMs: 0, count: 0 };
+        tiemposPorCategoria[inc.categoria] = { sumaMin: 0, count: 0 };
       }
-      tiemposPorCategoria[inc.categoria].sumaMs += duracionMs;
+      tiemposPorCategoria[inc.categoria].sumaMin += min;
       tiemposPorCategoria[inc.categoria].count += 1;
     });
 
-    const promedioMs = sumaMilisegundos / resueltas.length;
-    const mttrHoras = (promedioMs / (1000 * 60 * 60)).toFixed(1);
-    const mttrDias = (promedioMs / (1000 * 60 * 60 * 24)).toFixed(1);
+    const promedioMin = sumaMinutos / resueltas.length;
+    const mttrMinutos = Number(promedioMin.toFixed(1));
+    const mttrHoras = Number((promedioMin / 60).toFixed(1));
+    const mttrDias = Number((promedioMin / (60 * 24)).toFixed(1));
 
     const desgloseCategoria = {};
     for (const [cat, data] of Object.entries(tiemposPorCategoria)) {
-      const horas = (data.sumaMs / data.count / (1000 * 60 * 60)).toFixed(1);
+      const minProm = data.sumaMin / data.count;
       desgloseCategoria[cat] = {
-        horasPromedio: Number(horas),
+        minutosPromedio: Number(minProm.toFixed(1)),
+        horasPromedio: Number((minProm / 60).toFixed(1)),
         totalResueltas: data.count,
       };
     }
@@ -125,8 +176,10 @@ const getMTTR = async (req, res, next) => {
     return res.status(200).json({
       ok: true,
       totalCasosAnalizados: resueltas.length,
-      mttrHoras: Number(mttrHoras),
-      mttrDias: Number(mttrDias),
+      mttrMinutos,
+      mttrHoras,
+      mttrDias,
+      porEdificio,
       mttrPorCategoria: desgloseCategoria,
     });
   } catch (error) {
@@ -135,18 +188,21 @@ const getMTTR = async (req, res, next) => {
 };
 
 /**
- * GET /api/analitica/aulas-cronicas
- * Pipeline de agregación en MongoDB Atlas para identificar aulas y edificios con fallas crónicas
+ * RF-08 | GET /api/analitica/fallas-cronicas (y /api/analitica/aulas-cronicas)
+ * Aggregation Pipeline: $group por edificio y aula, $sort por conteo descendente y $limit.
  */
 const getAulasCronicas = async (req, res, next) => {
   try {
+    const limit = Number(req.query.limit) || 10;
+
     const rankingAulas = await Incidencia.aggregate([
       {
         $group: {
           _id: {
-            edificio: '$ubicacion.edificio',
-            aula: '$ubicacion.aula_laboratorio',
+            edificioId: { $ifNull: ['$ubicacion.edificioId', '$ubicacion.edificio'] },
+            aula: { $ifNull: ['$ubicacion.aula', '$ubicacion.aula_laboratorio'] },
           },
+          edificioNombre: { $first: '$ubicacion.edificio' },
           totalIncidencias: { $sum: 1 },
           criticas: {
             $sum: { $cond: [{ $eq: ['$prioridad', 'critica'] }, 1, 0] },
@@ -155,7 +211,9 @@ const getAulasCronicas = async (req, res, next) => {
             $sum: { $cond: [{ $eq: ['$estado', 'abierta'] }, 1, 0] },
           },
           resueltas: {
-            $sum: { $cond: [{ $in: ['$estado', ['resuelta', 'cerrada']] }, 1, 0] },
+            $sum: {
+              $cond: [{ $in: ['$estado', ['resuelta', 'cerrada']] }, 1, 0],
+            },
           },
           categorias: { $addToSet: '$categoria' },
           ultimosTickets: {
@@ -164,19 +222,22 @@ const getAulasCronicas = async (req, res, next) => {
               titulo: '$titulo',
               prioridad: '$prioridad',
               estado: '$estado',
-              fecha: '$createdAt',
+              fecha: { $ifNull: ['$fechaReporte', '$createdAt'] },
             },
           },
         },
       },
       { $sort: { totalIncidencias: -1, criticas: -1 } },
-      { $limit: 10 },
+      { $limit: limit },
       {
         $project: {
           _id: 0,
-          edificio: '$_id.edificio',
+          edificioId: '$_id.edificioId',
+          edificio: { $ifNull: ['$edificioNombre', '$_id.edificioId'] },
+          aula: '$_id.aula',
           aula_laboratorio: '$_id.aula',
           totalIncidencias: 1,
+          conteo: '$totalIncidencias',
           criticas: 1,
           abiertas: 1,
           resueltas: 1,
@@ -189,6 +250,7 @@ const getAulasCronicas = async (req, res, next) => {
     return res.status(200).json({
       ok: true,
       totalEspaciosDetectados: rankingAulas.length,
+      fallasCronicas: rankingAulas,
       aulasCronicas: rankingAulas,
     });
   } catch (error) {

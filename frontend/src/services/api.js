@@ -350,6 +350,71 @@ export async function deleteEdificio(id, customHeaders = null) {
 
 // ==================== AUTH & DEMO UTILS ====================
 
+export async function loginUser(email, password) {
+  let response;
+  try {
+    response = await fetch(`${API_BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+  } catch {
+    throw new Error(
+      'No se pudo conectar con el servidor Backend (puerto 5000). Asegúrate de ejecutar: npm --prefix backend run dev'
+    );
+  }
+
+  const text = await response.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok || !data) {
+    throw new Error(
+      data?.error ||
+        'El servidor Backend (puerto 5000) no está encendido. Ejecuta en otra terminal: npm --prefix backend run dev'
+    );
+  }
+  return data;
+}
+
+export async function recuperarPassword(email) {
+  const response = await fetch(`${API_BASE_URL}/auth/recuperar-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al solicitar código de recuperación');
+  }
+  return data;
+}
+
+export async function restablecerPassword(email, codigoRecuperacion, nuevaPassword) {
+  const response = await fetch(`${API_BASE_URL}/auth/restablecer-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, codigoRecuperacion, nuevaPassword }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'Error al restablecer la contraseña');
+  }
+  return data;
+}
+
+export async function logoutUser() {
+  try {
+    await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+  } catch {
+    // Ignore error on client-side logout
+  }
+}
+
 export async function getUsuariosDemo() {
   const response = await fetch(`${API_BASE_URL}/auth/usuarios-demo`);
   if (!response.ok) {

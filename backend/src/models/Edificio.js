@@ -14,7 +14,7 @@ const aulaSchema = new mongoose.Schema({
   },
   tipo: {
     type: String,
-    enum: ['aula', 'laboratorio', 'auditorio', 'oficina_administrativa', 'taller'],
+    enum: ['aula', 'laboratorio', 'otro', 'auditorio', 'oficina_administrativa', 'taller'],
     default: 'aula',
   },
   piso: {
@@ -29,9 +29,15 @@ const aulaSchema = new mongoose.Schema({
 
 const edificioSchema = new mongoose.Schema(
   {
+    clave: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+    },
     codigo: {
       type: String,
-      required: [true, 'El código de edificio es obligatorio'],
+      required: [true, 'La clave/código del edificio es obligatoria'],
       unique: true,
       trim: true,
       uppercase: true,
@@ -65,6 +71,17 @@ const edificioSchema = new mongoose.Schema(
     collection: 'edificios',
   }
 );
+
+// Sincronizar 'clave' (Tabla 10 / Figura 6 del documento) y 'codigo'
+edificioSchema.pre('validate', function (next) {
+  if (this.clave && !this.codigo) {
+    this.codigo = this.clave.toUpperCase();
+  }
+  if (this.codigo && !this.clave) {
+    this.clave = this.codigo.toUpperCase();
+  }
+  next();
+});
 
 const Edificio = mongoose.model('Edificio', edificioSchema);
 

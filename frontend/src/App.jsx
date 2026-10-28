@@ -3,16 +3,18 @@ import Navbar from './components/Navbar';
 import Dashboard from './components/Dashboard';
 import IncidentDetailModal from './components/IncidentDetailModal';
 import NewIncidentModal from './components/NewIncidentModal';
+import Login from './components/Login';
 import ReportanteDashboard from './components/dashboards/ReportanteDashboard';
 import TecnicoDashboard from './components/dashboards/TecnicoDashboard';
 import SupervisorDashboard from './components/dashboards/SupervisorDashboard';
 import DirectivoDashboard from './components/dashboards/DirectivoDashboard';
 import AdminDashboard from './components/dashboards/AdminDashboard';
+import SuperAdminDashboard from './components/dashboards/SuperAdminDashboard';
 import { getIncidencias, seedDemoData } from './services/api';
 import { useAuth } from './context/AuthContext';
 
 export default function App() {
-  const { currentUser, rol } = useAuth();
+  const { currentUser, rol, isAuthenticated } = useAuth();
   const [incidencias, setIncidencias] = useState([]);
   const [estadisticas, setEstadisticas] = useState({});
   const [loading, setLoading] = useState(true);
@@ -28,8 +30,14 @@ export default function App() {
     search: '',
   });
 
-  // Cargar incidencias desde la API (con cabeceras RBAC del usuario activo)
+  // Cargar incidencias desde la API (según Tabla 4, el rol 'directivo' solo consulta analítica)
   const loadIncidencias = useCallback(async () => {
+    if (!currentUser) return;
+    if (currentUser.rol === 'directivo') {
+      setIncidencias([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const data = await getIncidencias(filters);
@@ -43,18 +51,28 @@ export default function App() {
   }, [filters, currentUser]);
 
   useEffect(() => {
-    loadIncidencias();
-  }, [loadIncidencias]);
+    if (currentUser) {
+      loadIncidencias();
+    }
+  }, [loadIncidencias, currentUser]);
 
-  // Si cambia el usuario y su rol no permite analítica o catálogos, regresar a dashboard
+  // Ajustar navegación según rol RBAC
   useEffect(() => {
-    if (activeNav === 'catalogos' && rol !== 'admin') {
+    if (rol === 'directivo') {
+      setActiveNav('analitica');
+      return;
+    }
+    if (activeNav === 'catalogos' && rol !== 'admin' && rol !== 'superadmin') {
       setActiveNav('dashboard');
     }
-    if (activeNav === 'analitica' && rol === 'reportante') {
+    if (activeNav === 'analitica' && (rol === 'reportante' || rol === 'tecnico')) {
       setActiveNav('dashboard');
     }
   }, [rol, activeNav]);
+
+  if (!isAuthenticated || !currentUser) {
+    return <Login />;
+  }
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -65,7 +83,7 @@ export default function App() {
     try {
       await seedDemoData();
       await loadIncidencias();
-      alert('¡Base de datos MongoDB Atlas restaurada con usuarios RBAC, catálogos e incidencias!');
+      alert('¡Base de datos MongoDB Atlas restaurada con los 6 perfiles (incluyendo Super Admin), catálogos e incidencias!');
     } catch (err) {
       alert(`Error al sembrar datos: ${err.message}`);
     } finally {
@@ -73,13 +91,13 @@ export default function App() {
     }
   };
 
-  // Renderizado dinámico del dashboard según rol RBAC
+  // Renderizado dinámico de la interfaz exclusiva para cada rol (Tabla 3 y Tabla 4 + Super Admin)
   const renderRoleDashboard = () => {
-    if (activeNav === 'analitica') {
+    if (activeNav === 'analitica' && (rol === 'directivo' || rol === 'supervisor' || rol === 'admin' || rol === 'superadmin')) {
       return <DirectivoDashboard />;
     }
 
-    if (activeNav === 'catalogos' && rol === 'admin') {
+    if (activeNav === 'catalogos' && (rol === 'admin' || rol === 'superadmin')) {
       return (
         <AdminDashboard
           incidencias={incidencias}
@@ -87,11 +105,26 @@ export default function App() {
           loading={loading}
           onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
           onRefresh={loadIncidencias}
+          onOpenNewModal={() => setIsNewModalOpen(true)}
+          defaultTab="usuarios"
         />
       );
     }
 
     switch (rol) {
+      case 'superadmin':
+        return (
+          <SuperAdminDashboard
+            incidencias={incidencias}
+            estadisticas={estadisticas}
+            loading={loading}
+            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onRefresh={loadIncidencias}
+            onOpenNewModal={() => setIsNewModalOpen(true)}
+            onSeedData={handleSeedData}
+            isSeeding={isSeeding}
+          />
+        );
       case 'reportante':
         return (
           <ReportanteDashboard
@@ -118,6 +151,7 @@ export default function App() {
             loading={loading}
             onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
             onRefresh={loadIncidencias}
+            onOpenNewModal={() => setIsNewModalOpen(true)}
             onNavigateToAnalitica={() => setActiveNav('analitica')}
           />
         );
@@ -131,6 +165,7 @@ export default function App() {
             loading={loading}
             onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
             onRefresh={loadIncidencias}
+            onOpenNewModal={() => setIsNewModalOpen(true)}
           />
         );
       default:
@@ -151,7 +186,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
-      {/* Barra de Navegación con Selector RBAC */}
       <Navbar
         onOpenNewModal={() => setIsNewModalOpen(true)}
         onSeedData={handleSeedData}
@@ -159,34 +193,32 @@ export default function App() {
         onRefresh={loadIncidencias}
         activeNav={activeNav}
         onChangeNav={(nav) => setActiveNav(nav)}
+        onTrackFolio={(folio) => setSelectedCodigo(folio)}
       />
 
-      {/* Contenido Principal Adaptativo */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {renderRoleDashboard()}
       </main>
 
-      {/* Pie de Página Institucional */}
       <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="font-bold text-slate-800">UTM Desk NoSQL Cloud</span>
             <span>•</span>
             <span className="capitalize">
-              Sesión activa: <strong className="text-slate-900">{currentUser.nombre}</strong> ({rol})
+              Sesión activa: <strong className="text-slate-900">{currentUser?.nombre}</strong> ({rol})
             </span>
           </div>
-          <div className="flex items-center space-x-4 text-[11px] text-slate-400">
-            <span>Control de Acceso RBAC</span>
+          <div className="flex items-center space-x-4 text-[11px] text-slate-400 font-mono">
+            <span>Matriz Tabla 3 y 4 ERS</span>
             <span>•</span>
-            <span>MongoDB Atlas NoSQL</span>
+            <span>MongoDB Atlas M0</span>
             <span>•</span>
-            <span>Supabase Storage</span>
+            <span>Supabase Storage + Sharp HD</span>
           </div>
         </div>
       </footer>
 
-      {/* Modal de Expediente Detallado (GET /:codigo) */}
       {selectedCodigo && (
         <IncidentDetailModal
           codigo={selectedCodigo}
@@ -195,7 +227,6 @@ export default function App() {
         />
       )}
 
-      {/* Modal para Crear Nueva Incidencia */}
       {isNewModalOpen && (
         <NewIncidentModal
           isOpen={isNewModalOpen}

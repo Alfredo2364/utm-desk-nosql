@@ -5,11 +5,16 @@ node_modules/
 
 # Entorno y Secretos (¡IMPORTANTE! Proteger claves de MongoDB y Supabase)
 .env
+backend/.env
+frontend/.env
+**/.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 *.env
+!.env.example
+!backend/.env.example
 
 # Compilación y builds
 dist/

@@ -13,6 +13,7 @@ import {
   Sparkles,
   MapPin,
   Flame,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AssignTechnicianModal from '../AssignTechnicianModal';
@@ -24,6 +25,7 @@ export default function SupervisorDashboard({
   onSelectIncidencia,
   onRefresh,
   onNavigateToAnalitica,
+  onOpenNewModal,
 }) {
   const { currentUser, usuariosDemo } = useAuth();
   const [selectedIncidenciaParaAsignar, setSelectedIncidenciaParaAsignar] = useState(null);
@@ -34,87 +36,130 @@ export default function SupervisorDashboard({
   // Filtrado local para supervisión
   const filtradas = incidencias.filter((inc) => {
     if (filtroArea !== 'todas' && inc.categoria !== filtroArea) return false;
-    if (filtroEstado !== 'todos' && inc.estado !== filtroEstado) return false;
+    if (filtroEstado !== 'todos') {
+      if (filtroEstado === 'en_proceso' || filtroEstado === 'en_progreso') {
+        if (inc.estado !== 'en_proceso' && inc.estado !== 'en_progreso') return false;
+      } else if (inc.estado !== filtroEstado) {
+        return false;
+      }
+    }
     if (searchTerm.trim() !== '') {
       const q = searchTerm.toLowerCase();
       const matchCodigo = inc.codigo?.toLowerCase().includes(q);
       const matchTitulo = inc.titulo?.toLowerCase().includes(q);
       const matchTecnico = inc.tecnico_asignado?.nombre?.toLowerCase().includes(q);
-      const matchUbicacion = inc.ubicacion?.edificio?.toLowerCase().includes(q);
+      const matchUbicacion =
+        inc.ubicacion?.edificio?.toLowerCase().includes(q) ||
+        inc.ubicacion?.aula_laboratorio?.toLowerCase().includes(q);
       if (!matchCodigo && !matchTitulo && !matchTecnico && !matchUbicacion) return false;
     }
     return true;
   });
 
+  const sinAsignarCount = incidencias.filter(
+    (i) => !i.tecnico_asignado?.email && i.estado !== 'resuelta' && i.estado !== 'cerrada'
+  ).length;
+
+  const getPriorityBadge = (prioridad) => {
+    const config = {
+      critica: 'bg-rose-50 text-rose-700 border-rose-200',
+      alta: 'bg-orange-50 text-orange-700 border-orange-200',
+      media: 'bg-amber-50 text-amber-700 border-amber-200',
+      baja: 'bg-slate-50 text-slate-700 border-slate-200',
+    };
+    return (
+      <span
+        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+          config[prioridad] || 'bg-slate-100 text-slate-700'
+        }`}
+      >
+        {prioridad}
+      </span>
+    );
+  };
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Header Supervisor con Enlace a Analítica */}
-      <div className="bg-gradient-to-r from-blue-900 to-indigo-950 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-4 animate-fadeIn">
+      {/* Header Supervisor Enterprise */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-xs font-semibold mb-2 border border-blue-400/30">
-            <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
-            <span>Perfil: Supervisor General de Campus</span>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-base font-bold text-slate-900 tracking-tight">
+              Centro de Supervisión y Seguimiento de Tickets
+            </h1>
+            <span className="font-mono text-[10px] bg-blue-50 text-blue-800 px-2 py-0.5 rounded font-bold uppercase border border-blue-200">
+              ROL: SUPERVISOR (TABLA 3 Y 4)
+            </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black">
-            Panel de Supervisión Operativa
-          </h2>
-          <p className="text-xs sm:text-sm text-blue-200 mt-1 max-w-xl">
-            Monitoreo en tiempo real de todas las incidencias de los tres departamentos técnicos del campus y balanceo de cargas de trabajo.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Registra incidencias, consulta todos los tickets, asigna técnicos y supervisa analítica. (Solo gestión: no altera estados, revisiones ni evidencias).
           </p>
         </div>
 
-        <button
-          onClick={onNavigateToAnalitica}
-          className="inline-flex items-center space-x-2 px-5 py-3 rounded-xl bg-white text-blue-950 hover:bg-blue-50 font-bold text-xs sm:text-sm shadow-md transition-all transform hover:-translate-y-0.5 shrink-0"
-        >
-          <BarChart3 className="w-4 h-4 text-indigo-600" />
-          <span>Ver Módulo de Analítica Directiva</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {onOpenNewModal && (
+            <button
+              onClick={onOpenNewModal}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <span>+ Registrar Incidencia</span>
+            </button>
+          )}
+          {onNavigateToAnalitica && (
+            <button
+              onClick={onNavigateToAnalitica}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-md bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>Analítica y Reportes</span>
+              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Métricas Generales */}
+      {/* KPI Ribbon Dispatcher */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-slate-500 font-bold uppercase text-[10px]">Total General</span>
+        <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-xs">
+          <span className="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Total General</span>
           <div className="text-2xl font-black text-slate-900 mt-0.5">{incidencias.length}</div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-xs">
-          <span className="text-blue-600 font-bold uppercase text-[10px]">Abiertas</span>
+        <div className="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs">
+          <span className="text-blue-600 font-bold uppercase text-[10px] tracking-wider">Abiertas</span>
           <div className="text-2xl font-black text-blue-900 mt-0.5">
             {incidencias.filter((i) => i.estado === 'abierta').length}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-amber-100 shadow-xs">
-          <span className="text-amber-600 font-bold uppercase text-[10px]">En Progreso</span>
+        <div className="bg-white p-3.5 rounded-lg border border-amber-100 shadow-xs">
+          <span className="text-amber-600 font-bold uppercase text-[10px] tracking-wider">En Progreso</span>
           <div className="text-2xl font-black text-amber-900 mt-0.5">
             {incidencias.filter((i) => i.estado === 'en_progreso').length}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-emerald-100 shadow-xs">
-          <span className="text-emerald-600 font-bold uppercase text-[10px]">Resueltas</span>
+        <div className="bg-white p-3.5 rounded-lg border border-emerald-100 shadow-xs">
+          <span className="text-emerald-600 font-bold uppercase text-[10px] tracking-wider">Resueltas</span>
           <div className="text-2xl font-black text-emerald-900 mt-0.5">
             {incidencias.filter((i) => i.estado === 'resuelta' || i.estado === 'cerrada').length}
           </div>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-xs">
-          <span className="text-rose-600 font-bold uppercase text-[10px]">Críticas Activas</span>
+        <div className="bg-white p-3.5 rounded-lg border border-rose-100 shadow-xs">
+          <span className="text-rose-600 font-bold uppercase text-[10px] tracking-wider">Sin Asignar Activas</span>
           <div className="text-2xl font-black text-rose-900 mt-0.5">
-            {incidencias.filter((i) => i.prioridad === 'critica' && i.estado !== 'resuelta').length}
+            {sinAsignarCount}
           </div>
         </div>
       </div>
 
-      {/* Filtros de Supervisión */}
-      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Toolbar & Filters */}
+      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div className="relative w-full sm:w-80">
+          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar por código, técnico o aula..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-8 pr-3 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
           />
         </div>
 
@@ -122,7 +167,7 @@ export default function SupervisorDashboard({
           <select
             value={filtroArea}
             onChange={(e) => setFiltroArea(e.target.value)}
-            className="px-3 py-1.5 rounded-lg border border-slate-300 font-semibold"
+            className="px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium bg-white"
           >
             <option value="todas">Todas las Áreas</option>
             <option value="computo_telecomunicaciones">Cómputo & Redes</option>
@@ -133,7 +178,7 @@ export default function SupervisorDashboard({
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className="px-3 py-1.5 rounded-lg border border-slate-300 font-semibold"
+            className="px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium bg-white"
           >
             <option value="todos">Todos los Estados</option>
             <option value="abierta">Abiertas</option>
@@ -144,28 +189,29 @@ export default function SupervisorDashboard({
         </div>
       </div>
 
-      {/* Tabla Panorámica con Botón de Asignación */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-bold text-slate-900 text-sm">
-            Gestión de Asignación y Seguimiento Operativo ({filtradas.length})
+      {/* Dispatcher Table */}
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+        <div className="px-4 py-2.5 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+          <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+            Matriz de Seguimiento y Despacho Operativo ({filtradas.length})
           </h3>
           <span className="text-[11px] text-slate-500">
-            Haz clic en "Asignar" para delegar o reasignar técnicos
+            Click en "Asignar" para delegar o rebalancear técnicos
           </span>
         </div>
 
         <div className="overflow-x-auto text-xs">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
+            <thead className="bg-white border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
               <tr>
-                <th className="px-4 py-3">Código</th>
-                <th className="px-4 py-3">Incidencia</th>
-                <th className="px-4 py-3">Área</th>
-                <th className="px-4 py-3">Ubicación</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Técnico Asignado</th>
-                <th className="px-4 py-3 text-right">Reasignación</th>
+                <th className="px-4 py-2.5">Código</th>
+                <th className="px-4 py-2.5">Incidencia</th>
+                <th className="px-4 py-2.5">Área</th>
+                <th className="px-4 py-2.5">Ubicación</th>
+                <th className="px-4 py-2.5">Prioridad</th>
+                <th className="px-4 py-2.5">Estado</th>
+                <th className="px-4 py-2.5">Técnico Asignado</th>
+                <th className="px-4 py-2.5 text-right">Despacho</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -173,7 +219,7 @@ export default function SupervisorDashboard({
                 <tr
                   key={inc._id || inc.codigo}
                   onClick={() => onSelectIncidencia(inc)}
-                  className="hover:bg-indigo-50/40 cursor-pointer transition-colors"
+                  className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                 >
                   <td className="px-4 py-3 font-mono font-bold text-slate-900">
                     {inc.codigo}
@@ -186,7 +232,10 @@ export default function SupervisorDashboard({
                   </td>
                   <td className="px-4 py-3 text-slate-600">
                     <div>{inc.ubicacion?.edificio}</div>
-                    <div className="text-[11px] text-slate-400">{inc.ubicacion?.aula_laboratorio}</div>
+                    <div className="text-[11px] text-slate-400 font-mono">{inc.ubicacion?.aula_laboratorio}</div>
+                  </td>
+                  <td className="px-4 py-3">
+                    {getPriorityBadge(inc.prioridad)}
                   </td>
                   <td className="px-4 py-3">
                     <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-800 border border-slate-200">
@@ -200,7 +249,7 @@ export default function SupervisorDashboard({
                         <span>{inc.tecnico_asignado.nombre}</span>
                       </div>
                     ) : (
-                      <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
                         ⚠️ Sin Asignar
                       </span>
                     )}
@@ -211,7 +260,7 @@ export default function SupervisorDashboard({
                         e.stopPropagation();
                         setSelectedIncidenciaParaAsignar(inc);
                       }}
-                      className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold text-[11px] shadow-xs"
+                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[11px] font-semibold transition-colors"
                     >
                       {inc.tecnico_asignado?.nombre ? 'Reasignar' : 'Asignar'}
                     </button>

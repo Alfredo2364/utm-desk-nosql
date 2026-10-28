@@ -7,13 +7,16 @@ import {
   Calendar,
   Clock,
   AlertTriangle,
-  Flame,
-  CheckCircle,
   FolderOpen,
   Loader2,
   RefreshCw,
   UserCheck,
   Check,
+  Building,
+  Shield,
+  Layers,
+  ChevronRight,
+  Copy,
 } from 'lucide-react';
 import { getIncidenciaByCodigo, addRevision, patchEstado } from '../services/api';
 import PolymorphicDetail from './PolymorphicDetail';
@@ -31,6 +34,15 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
+  const [copiedFolio, setCopiedFolio] = useState(false);
+
+  const handleCopyFolio = () => {
+    if (codigo) {
+      navigator.clipboard.writeText(codigo);
+      setCopiedFolio(true);
+      setTimeout(() => setCopiedFolio(false), 2000);
+    }
+  };
 
   const fetchDossier = async () => {
     setLoading(true);
@@ -51,7 +63,6 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     }
   }, [codigo]);
 
-  // Manejar adición de nueva revisión
   const handleAddRevision = async (reviewData) => {
     setIsSubmittingReview(true);
     try {
@@ -65,7 +76,6 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     }
   };
 
-  // Manejar cambio rápido de estado
   const handleStatusChange = async (nuevoEstado) => {
     setChangingStatus(true);
     try {
@@ -79,125 +89,249 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     }
   };
 
-  // Manejar nueva evidencia subida
-  const handleEvidenceUploaded = async (newEvidence) => {
+  const handleEvidenceUploaded = async () => {
     await fetchDossier();
     if (onIncidentUpdated) onIncidentUpdated();
   };
 
   if (!codigo) return null;
 
-  // Lógica de permisos de carga de evidencias
-  const isOwner = incidencia?.reportante?.email?.toLowerCase() === currentUser?.email?.toLowerCase();
+  const isOwner =
+    incidencia?.reportante?.email?.toLowerCase() === currentUser?.email?.toLowerCase();
+  const isAssignedTech =
+    incidencia?.tecnico_asignado?.email?.toLowerCase() === currentUser?.email?.toLowerCase();
+  const isAdminOrSuper = rol === 'admin' || rol === 'superadmin';
+
+  // Permisos estrictos según Tabla 3 y Tabla 4 del ERS Cloud:
+  // - Cargar evidencia: Reportante (Propias), Técnico (Asignadas), Admin/SuperAdmin (Sí), Supervisor (No), Directivo (No)
   const canUploadEvidence =
     (rol === 'reportante' && isOwner) ||
-    rol === 'tecnico' ||
-    rol === 'supervisor' ||
-    rol === 'admin';
+    (rol === 'tecnico' && isAssignedTech) ||
+    isAdminOrSuper;
 
-  const canManageStatus = rol === 'tecnico' || rol === 'supervisor' || rol === 'admin';
-  const canAssignTechnician = rol === 'supervisor' || rol === 'admin';
+  // - Cambiar estado y Agregar revisión: Técnico (Asignadas), Admin/SuperAdmin (Sí), Supervisor (No), Reportante (No), Directivo (No)
+  const canManageStatus = (rol === 'tecnico' && isAssignedTech) || isAdminOrSuper;
+  const canAddReview = (rol === 'tecnico' && isAssignedTech) || isAdminOrSuper;
+
+  // - Gestión / Asignación de técnico: Supervisor, Admin y SuperAdmin
+  const canAssignTechnician = rol === 'supervisor' || isAdminOrSuper;
+
+  const getPriorityBadge = (p) => {
+    switch (p) {
+      case 'critica':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-50 text-rose-800 border border-rose-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+            CRÍTICA
+          </span>
+        );
+      case 'alta':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-orange-50 text-orange-800 border border-orange-300">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-600"></span>
+            ALTA
+          </span>
+        );
+      case 'media':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-amber-50 text-amber-800 border border-amber-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            MEDIA
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-100 text-slate-700 border border-slate-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+            BAJA
+          </span>
+        );
+    }
+  };
+
+  const getStatusBadge = (s) => {
+    const config = {
+      abierta: 'bg-blue-50 text-blue-800 border-blue-200',
+      asignada: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+      en_proceso: 'bg-amber-50 text-amber-800 border-amber-200',
+      en_progreso: 'bg-amber-50 text-amber-800 border-amber-200',
+      pendiente_revision: 'bg-purple-50 text-purple-800 border-purple-200',
+      resuelta: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-bold',
+      cerrada: 'bg-slate-100 text-slate-700 border-slate-200',
+    };
+    return (
+      <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold uppercase border ${config[s] || 'bg-slate-100'}`}>
+        {s?.replace('_', ' ')}
+      </span>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-      <div className="bg-slate-50 w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Modal Top Header */}
-        <div className="bg-white px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4 animate-fadeIn">
+      <div className="bg-white w-full max-w-6xl rounded-xl shadow-2xl border border-slate-300 overflow-hidden flex flex-col max-h-[94vh]">
+        {/* Top Control Bar */}
+        <div className="bg-slate-900 px-5 py-3 border-b border-slate-800 text-slate-200 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center">
-              <FolderOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="font-mono font-bold text-base text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
-                  {codigo}
-                </span>
-                <span className="text-xs text-slate-500 font-medium">
-                  Expediente NoSQL MongoDB Atlas
-                </span>
-              </div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 line-clamp-1">
-                {incidencia?.titulo || 'Cargando expediente...'}
-              </h2>
+            <span className="font-mono font-bold text-xs bg-slate-800 text-emerald-400 px-2.5 py-1 rounded border border-slate-700">
+              {codigo}
+            </span>
+            <div className="flex items-center space-x-2 text-xs text-slate-400">
+              <span className="capitalize">{incidencia?.categoria?.replace('_', ' ')}</span>
+              <span>/</span>
+              <span className="truncate max-w-md text-slate-200 font-medium">{incidencia?.titulo}</span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1.5">
+            <button
+              onClick={handleCopyFolio}
+              title="Copiar Folio Oficial"
+              className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-[11px] font-mono border border-slate-700 transition-colors"
+            >
+              {copiedFolio ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+              <span>{copiedFolio ? 'Copiado' : 'Copiar Folio'}</span>
+            </button>
             <button
               onClick={fetchDossier}
               title="Refrescar expediente"
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-md transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* Modal Body / Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-6 flex-1">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-400 space-y-3">
-              <Loader2 className="w-8 h-8 animate-spin text-emerald-600" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Consultando documento embebido en MongoDB Atlas...
-              </p>
-            </div>
-          ) : error ? (
-            <div className="p-6 bg-rose-50 border border-rose-200 rounded-xl text-center space-y-2 text-rose-700 text-sm">
-              <AlertTriangle className="w-6 h-6 mx-auto text-rose-600" />
-              <p className="font-semibold">{error}</p>
-              <button
-                onClick={fetchDossier}
-                className="px-3 py-1 bg-rose-600 text-white text-xs font-medium rounded-lg"
-              >
-                Reintentar
-              </button>
-            </div>
-          ) : incidencia ? (
-            <>
-              {/* Sección 1: Información Base, Estado y Asignación */}
-              <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Estado:
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800">
-                      {incidencia.estado?.replace('_', ' ')}
-                    </span>
-                    <span className="text-slate-300">•</span>
-                    <span className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                      Prioridad:
-                    </span>
-                    <span className="px-2.5 py-0.5 rounded text-xs font-bold capitalize bg-amber-100 text-amber-800">
-                      {incidencia.prioridad}
-                    </span>
-                  </div>
+        {/* Modal Body: Two-Column Split Pane */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-28 text-slate-400 space-y-2">
+            <Loader2 className="w-7 h-7 animate-spin text-slate-600" />
+            <p className="text-xs font-mono uppercase tracking-wider text-slate-500">
+              Cargando documento en MongoDB Atlas...
+            </p>
+          </div>
+        ) : error ? (
+          <div className="p-8 text-center space-y-3">
+            <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto" />
+            <p className="text-xs text-rose-700 font-semibold">{error}</p>
+            <button
+              onClick={fetchDossier}
+              className="px-3 py-1 bg-slate-800 text-white text-xs font-medium rounded-md"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : incidencia ? (
+          <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-slate-200">
+            {/* Columna Izquierda: Contenido Principal (68%) */}
+            <div className="lg:col-span-8 p-5 overflow-y-auto space-y-5">
+              {/* Título y Descripción */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-xs text-slate-500 font-mono">
+                  <span>EXPEDIENTE TÉCNICO</span>
+                  <span>•</span>
+                  <span>REGISTRADO EL {new Date(incidencia.createdAt).toLocaleString('es-MX')}</span>
+                </div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 leading-snug">
+                  {incidencia.titulo}
+                </h2>
+                <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200 text-xs text-slate-800 leading-relaxed font-sans whitespace-pre-wrap">
+                  {incidencia.descripcion}
+                </div>
+              </div>
 
-                  {/* Acciones de cambio de estado para Técnicos, Supervisores y Admin */}
-                  {canManageStatus && (
-                    <div className="flex items-center space-x-1 text-xs">
-                      <span className="text-slate-400 font-semibold mr-1">Mover a:</span>
-                      {incidencia.estado !== 'en_progreso' && (
+              {/* Especificaciones Polimórficas */}
+              <PolymorphicDetail
+                categoria={incidencia.categoria}
+                detalle={incidencia.detalle}
+              />
+
+              {/* Bóveda de Evidencias */}
+              <EvidenceGrid evidencias={incidencia.evidencias_adjuntas} />
+
+              {/* Uploader de Evidencias */}
+              {canUploadEvidence && (
+                <EvidenceUploader
+                  codigo={incidencia.codigo}
+                  onEvidenceUploaded={handleEvidenceUploaded}
+                />
+              )}
+
+              {/* Timeline de Revisiones y Auditoría */}
+              <TimelineReviews
+                revisiones={incidencia.revisiones}
+                onAddRevision={handleAddRevision}
+                isSubmitting={isSubmittingReview}
+                canAddReviewProp={canAddReview}
+              />
+            </div>
+
+            {/* Columna Derecha: Inspector de Metadatos & Propiedades (32%) */}
+            <div className="lg:col-span-4 p-5 overflow-y-auto bg-slate-50/60 space-y-4 text-xs">
+              <div className="font-bold text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200 pb-2">
+                Inspector de Propiedades
+              </div>
+
+              {/* Aviso de Permisos según Rol (Tabla 3 y Tabla 4 del ERS Cloud) */}
+              {rol === 'supervisor' && (
+                <div className="p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-[11px] leading-relaxed">
+                  <strong>Modo Supervisión (Tabla 3 y 4):</strong> Tu acceso es de gestión y seguimiento. Puedes consultar el expediente y asignar técnico, pero no modificar el estado, las revisiones ni las evidencias.
+                </div>
+              )}
+              {rol === 'tecnico' && !isAssignedTech && (
+                <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] leading-relaxed">
+                  <strong>Modo Consulta de Área (Tabla 4):</strong> Esta incidencia aún no está asignada a tu cuenta. Solo el técnico asignado puede cambiar su estado, registrar revisiones o adjuntar evidencias.
+                </div>
+              )}
+
+              {/* Folio Oficial & Canal de Levantamiento */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Folio Institucional</span>
+                  <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                    {incidencia.codigo}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[11px] pt-1.5 border-t border-slate-100">
+                  <span className="text-slate-500">Canal de Ingreso:</span>
+                  <span className="font-semibold text-slate-800 capitalize font-mono text-[10px] bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
+                    {incidencia.canal_origen ? incidencia.canal_origen.replace('_', ' ') : 'Portal Autoservicio'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Estado Operativo & Acciones de Flujo de Trabajo */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Estado Operativo</span>
+                  {getStatusBadge(incidencia.estado)}
+                </div>
+
+                {canManageStatus && (
+                  <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                    <span className="text-[10px] text-slate-400 uppercase font-mono block">
+                      Transicionar Estado (RF-04):
+                    </span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {incidencia.estado !== 'en_proceso' && incidencia.estado !== 'en_progreso' && (
                         <button
-                          onClick={() => handleStatusChange('en_progreso')}
+                          onClick={() => handleStatusChange('en_proceso')}
                           disabled={changingStatus}
-                          className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded border border-amber-200 font-semibold"
+                          className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded font-semibold text-[11px] text-center cursor-pointer"
                         >
-                          En Progreso
+                          En Proceso
                         </button>
                       )}
                       {incidencia.estado !== 'resuelta' && (
                         <button
                           onClick={() => handleStatusChange('resuelta')}
                           disabled={changingStatus}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold shadow-xs flex items-center gap-1"
+                          className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-bold text-[11px] text-center flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <Check className="w-3 h-3" />
                           <span>Resuelta</span>
@@ -207,143 +341,113 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
                         <button
                           onClick={() => handleStatusChange('cerrada')}
                           disabled={changingStatus}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded border border-slate-200 font-semibold"
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded font-semibold text-[11px] text-center cursor-pointer"
                         >
                           Cerrar
                         </button>
                       )}
                     </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Nivel de Prioridad */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 flex justify-between items-center">
+                <span className="text-slate-500 font-medium">Nivel de Prioridad</span>
+                {getPriorityBadge(incidencia.prioridad)}
+              </div>
+
+              {/* Técnico Asignado */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-medium">Técnico Responsable</span>
+                  {canAssignTechnician && (
+                    <button
+                      onClick={() => setShowAssignModal(true)}
+                      className="text-[11px] font-semibold text-emerald-700 hover:underline"
+                    >
+                      {incidencia.tecnico_asignado?.nombre ? 'Cambiar' : 'Asignar'}
+                    </button>
                   )}
                 </div>
 
-                {/* Descripción Detallada */}
-                <div>
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
-                    Descripción del Incidente
-                  </h4>
-                  <p className="text-sm text-slate-800 leading-relaxed bg-slate-50/70 p-3.5 rounded-lg border border-slate-100">
-                    {incidencia.descripcion}
-                  </p>
-                </div>
-
-                {/* Grid Ubicación, Reportante y Técnico Asignado */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-                  {/* Ubicación */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1 text-xs">
-                    <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
-                      <MapPin className="w-4 h-4" />
-                      <span>Ubicación en Campus</span>
+                {incidencia.tecnico_asignado?.nombre ? (
+                  <div className="p-2 bg-slate-50 rounded border border-slate-100 space-y-0.5">
+                    <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{incidencia.tecnico_asignado.nombre}</span>
                     </div>
-                    <div className="font-semibold text-slate-800 text-sm">
-                      {incidencia.ubicacion?.edificio}
+                    <div className="text-[11px] text-slate-500 font-mono truncate">
+                      {incidencia.tecnico_asignado.email}
                     </div>
-                    <div className="text-slate-600 font-medium">
-                      {incidencia.ubicacion?.aula_laboratorio} • {incidencia.ubicacion?.piso || 'Planta Baja'}
-                    </div>
-                    {incidencia.ubicacion?.referencias && (
-                      <div className="text-[11px] text-slate-500 italic pt-1">
-                        Ref: {incidencia.ubicacion.referencias}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Reportante */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1 text-xs">
-                    <div className="flex items-center space-x-1.5 text-blue-700 font-bold">
-                      <User className="w-4 h-4" />
-                      <span>Reportante</span>
-                    </div>
-                    <div className="font-semibold text-slate-800 text-sm">
-                      {incidencia.reportante?.nombre}
-                    </div>
-                    <div className="text-slate-600 truncate">{incidencia.reportante?.email}</div>
-                    <div className="text-[11px] text-slate-500 capitalize">
-                      Rol: {incidencia.reportante?.rol} • {incidencia.reportante?.departamento_carrera}
+                    <div className="text-[10px] text-slate-400 capitalize">
+                      Área: {incidencia.tecnico_asignado.area?.replace('_', ' ')}
                     </div>
                   </div>
-
-                  {/* Técnico Asignado */}
-                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-1 text-xs">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1.5 text-indigo-700 font-bold">
-                        <UserCheck className="w-4 h-4" />
-                        <span>Técnico Responsable</span>
-                      </div>
-                      {canAssignTechnician && (
-                        <button
-                          onClick={() => setShowAssignModal(true)}
-                          className="text-[10px] text-indigo-700 font-bold hover:underline"
-                        >
-                          {incidencia.tecnico_asignado?.nombre ? 'Cambiar' : 'Asignar'}
-                        </button>
-                      )}
-                    </div>
-
-                    {incidencia.tecnico_asignado?.nombre ? (
-                      <>
-                        <div className="font-semibold text-slate-800 text-sm">
-                          {incidencia.tecnico_asignado.nombre}
-                        </div>
-                        <div className="text-slate-600 truncate">{incidencia.tecnico_asignado.email}</div>
-                        <div className="text-[11px] text-emerald-700 font-medium capitalize">
-                          Área: {incidencia.tecnico_asignado.area?.replace('_', ' ')}
-                        </div>
-                      </>
-                    ) : (
-                      <div className="py-2 text-amber-700 font-semibold italic text-xs">
-                        ⚠️ Sin técnico asignado
-                      </div>
-                    )}
+                ) : (
+                  <div className="text-amber-700 font-medium italic p-2 bg-amber-50/60 rounded border border-amber-200 text-[11px]">
+                    ⚠️ Sin técnico asignado
                   </div>
+                )}
+              </div>
+
+              {/* Datos del Reportante */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                <span className="text-slate-500 font-medium block">Reportante</span>
+                <div className="font-bold text-slate-900">{incidencia.reportante?.nombre}</div>
+                <div className="text-slate-500 text-[11px] font-mono truncate">{incidencia.reportante?.email}</div>
+                <div className="text-[10px] text-slate-400 capitalize">
+                  Rol: {incidencia.reportante?.rol} • {incidencia.reportante?.departamento_carrera}
                 </div>
               </div>
 
-              {/* Sección 2: Detalle Polimórfico */}
-              <PolymorphicDetail
-                categoria={incidencia.categoria}
-                detalle={incidencia.detalle}
-              />
-
-              {/* Sección 3: Galería de Evidencias */}
-              <EvidenceGrid evidencias={incidencia.evidencias_adjuntas} />
-
-              {/* Sección 4: Carga Drag & Drop de Evidencias (Solo si autorizado) */}
-              {canUploadEvidence ? (
-                <EvidenceUploader
-                  codigo={incidencia.codigo}
-                  onEvidenceUploaded={handleEvidenceUploaded}
-                />
-              ) : (
-                <div className="p-4 bg-slate-100 rounded-xl border border-slate-200 text-slate-500 text-xs text-center italic">
-                  ℹ️ La carga de evidencias está reservada al reportante titular de la incidencia y al personal técnico operativo.
+              {/* Ubicación Física */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+                <span className="text-slate-500 font-medium block">Ubicación Física</span>
+                <div className="font-bold text-slate-900 flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                  <span>{incidencia.ubicacion?.edificio}</span>
                 </div>
-              )}
+                <div className="text-slate-600 text-[11px] pl-4 font-mono">
+                  {incidencia.ubicacion?.aula_laboratorio} • {incidencia.ubicacion?.piso}
+                </div>
+                {incidencia.ubicacion?.referencias && (
+                  <div className="text-[10px] text-slate-400 pl-4 italic">
+                    Ref: {incidencia.ubicacion.referencias}
+                  </div>
+                )}
+              </div>
 
-              {/* Sección 5: Línea de Tiempo de Revisiones Técnicas */}
-              <TimelineReviews
-                revisiones={incidencia.revisiones}
-                onAddRevision={handleAddRevision}
-                isSubmitting={isSubmittingReview}
-              />
-            </>
-          ) : null}
-        </div>
+              {/* SLA & Temporizadores */}
+              <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1 font-mono text-[11px]">
+                <span className="text-slate-500 font-sans block mb-1 font-medium">Trazabilidad SLA</span>
+                <div className="flex justify-between text-slate-600">
+                  <span>Creado:</span>
+                  <span>{new Date(incidencia.createdAt).toLocaleDateString('es-MX')}</span>
+                </div>
+                {incidencia.fecha_resolucion && (
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Resuelto:</span>
+                    <span>{new Date(incidencia.fecha_resolucion).toLocaleDateString('es-MX')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
-        {/* Modal Bottom Footer */}
-        <div className="bg-white px-6 py-3 border-t border-slate-200 flex items-center justify-between shrink-0">
-          <span className="text-[11px] text-slate-400">
-            UTM Desk NoSQL • Control de Acceso Basado en Roles (RBAC)
-          </span>
+        {/* Modal Footer */}
+        <div className="bg-slate-100 px-5 py-2.5 border-t border-slate-200 flex justify-between items-center text-xs text-slate-500 font-mono">
+          <span>UTM DESK • PROTOCOLO NoSQL MONGODB ATLAS</span>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-3 py-1 bg-white hover:bg-slate-200 border border-slate-300 text-slate-800 font-semibold rounded-md transition-colors"
           >
-            Cerrar Expediente
+            Cerrar Inspector
           </button>
         </div>
       </div>
 
-      {/* Modal de Asignación de Técnico */}
       {showAssignModal && (
         <AssignTechnicianModal
           isOpen={true}

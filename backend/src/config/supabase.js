@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { optimizeEvidenceBuffer } = require('../utils/imageOptimizer');
 
 const rawUrl = process.env.SUPABASE_URL || '';
 // Sanitizar URL eliminando rutas secundarias como /rest/v1/ o barras finales
@@ -60,15 +61,25 @@ const uploadEvidenceToSupabase = async (fileBuffer, originalName, mimeType, inci
     throw new Error('El cliente de Supabase Storage no está configurado. Verifique SUPABASE_URL y SUPABASE_SERVICE_KEY en su archivo .env');
   }
 
+  // 1. Optimización y compresión inteligente sin pérdida de nitidez (Sharp + MozJPEG / Lanczos3)
+  const {
+    buffer: optimizedBuffer,
+    mimeType: finalMimeType,
+    originalSize,
+    compressedSize,
+    ahorroPct,
+    fueComprimido,
+  } = await optimizeEvidenceBuffer(fileBuffer, mimeType, originalName);
+
   // Sanitizar y generar ruta única: incidencias/{codigo}/{timestamp}_{nombre}
   const cleanName = originalName.replace(/[^a-zA-Z0-9._-]/g, '_');
   const filePath = `incidencias/${incidentCode}/${Date.now()}_${cleanName}`;
 
-  // 1. Subir el buffer al bucket de Supabase
+  // 2. Subir el buffer optimizado al bucket de Supabase
   const { data: uploadData, error: uploadError } = await supabase.storage
     .from(defaultBucket)
-    .upload(filePath, fileBuffer, {
-      contentType: mimeType,
+    .upload(filePath, optimizedBuffer, {
+      contentType: finalMimeType,
       upsert: true,
     });
 
@@ -78,8 +89,8 @@ const uploadEvidenceToSupabase = async (fileBuffer, originalName, mimeType, inci
       await supabase.storage.createBucket(defaultBucket, { public: false });
       const retry = await supabase.storage
         .from(defaultBucket)
-        .upload(filePath, fileBuffer, {
-          contentType: mimeType,
+        .upload(filePath, optimizedBuffer, {
+          contentType: finalMimeType,
           upsert: true,
         });
       if (retry.error) {
@@ -90,7 +101,7 @@ const uploadEvidenceToSupabase = async (fileBuffer, originalName, mimeType, inci
     }
   }
 
-  // 2. Generar URL firmada por 6 días (6 días * 24 h * 60 m * 60 s = 518400 segundos)
+  // 3. Generar URL firmada por 6 días (6 días * 24 h * 60 m * 60 s = 518400 segundos)
   const SIX_DAYS_IN_SECONDS = 6 * 24 * 60 * 60; // 518400 segundos
   const { data: signedData, error: signError } = await supabase.storage
     .from(defaultBucket)
@@ -106,7 +117,10 @@ const uploadEvidenceToSupabase = async (fileBuffer, originalName, mimeType, inci
     path: filePath,
     signedUrl: signedData.signedUrl,
     expiresAt,
-    size: fileBuffer.length,
+    size: compressedSize,
+    originalSize,
+    ahorroPct,
+    fueComprimido,
   };
 };
 

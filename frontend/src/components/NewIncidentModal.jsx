@@ -8,8 +8,13 @@ import {
   Send,
   Loader2,
   AlertCircle,
-  Building,
+  Building2,
   User,
+  ShieldCheck,
+  Tag,
+  MapPin,
+  Flame,
+  Clock,
 } from 'lucide-react';
 import { createIncidencia } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -25,6 +30,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
     titulo: '',
     descripcion: '',
     prioridad: 'media',
+    canal_origen: 'portal_autoservicio',
     edificio: 'Edificio A - Tecnologías de la Información',
     aula_laboratorio: 'Laboratorio de Cómputo L-01',
     piso: 'Piso 1',
@@ -98,6 +104,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
       descripcion: formData.descripcion,
       categoria,
       prioridad: formData.prioridad,
+      canal_origen: formData.canal_origen,
       ubicacion: {
         edificio: formData.edificio,
         aula_laboratorio: formData.aula_laboratorio,
@@ -126,152 +133,164 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-      <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50">
+      <div className="bg-white w-full max-w-4xl rounded-lg shadow-2xl border border-slate-300 overflow-hidden flex flex-col max-h-[92vh]">
+        {/* Header Enterprise */}
+        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-slate-50/90">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
-              <PlusCircle className="w-5 h-5" />
-            </div>
+            <span className="font-mono text-[11px] font-bold bg-slate-900 text-white px-2 py-0.5 rounded">
+              NUEVO TICKET
+            </span>
             <div>
-              <h2 className="text-base font-bold text-slate-900">
-                Registrar Nueva Incidencia de Campus
+              <h2 className="text-sm font-bold text-slate-900 leading-tight">
+                Registrar Incidencia de Servicio
               </h2>
-              <p className="text-xs text-slate-500">
-                El formulario adapta sus campos polimórficos según la categoría seleccionada
+              <p className="text-[11px] text-slate-500">
+                Esquema polimórfico MongoDB Atlas • Almacenamiento seguro Supabase
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-slate-700 rounded-lg">
-            <X className="w-5 h-5" />
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200 rounded transition-colors"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+        <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-5 flex-1 text-xs">
           {error && (
-            <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center space-x-2 text-rose-700">
+            <div className="p-3 bg-rose-50 border border-rose-200 rounded-md flex items-center space-x-2 text-rose-700">
               <AlertCircle className="w-4 h-4 shrink-0" />
-              <span>{error}</span>
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
-          {/* Selector de Categoría Polimórfica */}
+          {/* Segmented Control de Categoría Polimórfica */}
           <div>
-            <label className="block text-slate-700 font-bold mb-2 uppercase tracking-wider text-[11px]">
-              Seleccione la Categoría de la Incidencia *
+            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+              Área de Clasificación del Ticket *
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1 bg-slate-100 rounded-lg border border-slate-200">
               <button
                 type="button"
                 onClick={() => setCategoria('computo_telecomunicaciones')}
-                className={`p-3 rounded-xl border text-left transition-all flex items-start space-x-3 ${
+                className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
                   categoria === 'computo_telecomunicaciones'
-                    ? 'border-blue-500 bg-blue-50/80 ring-2 ring-blue-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${categoria === 'computo_telecomunicaciones' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                  <Cpu className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">Cómputo y Redes</div>
-                  <div className="text-[11px] text-slate-500">Hardware, switches, Wi-Fi, IPs</div>
-                </div>
+                <Cpu className="w-4 h-4 text-blue-600" />
+                <span>Cómputo & Redes</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setCategoria('infraestructura_mantenimiento')}
-                className={`p-3 rounded-xl border text-left transition-all flex items-start space-x-3 ${
+                className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
                   categoria === 'infraestructura_mantenimiento'
-                    ? 'border-amber-500 bg-amber-50/80 ring-2 ring-amber-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${categoria === 'infraestructura_mantenimiento' ? 'bg-amber-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                  <Wrench className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">Infraestructura</div>
-                  <div className="text-[11px] text-slate-500">Plomería, electricidad, aulas</div>
-                </div>
+                <Wrench className="w-4 h-4 text-amber-600" />
+                <span>Infraestructura & Obra</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setCategoria('sistemas_servicios_academicos')}
-                className={`p-3 rounded-xl border text-left transition-all flex items-start space-x-3 ${
+                className={`flex items-center justify-center space-x-2 py-2 px-3 rounded-md text-xs font-semibold transition-all ${
                   categoria === 'sistemas_servicios_academicos'
-                    ? 'border-purple-500 bg-purple-50/80 ring-2 ring-purple-500/20'
-                    : 'border-slate-200 hover:bg-slate-50'
+                    ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                <div className={`p-2 rounded-lg ${categoria === 'sistemas_servicios_academicos' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                  <GraduationCap className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900">Sistemas Académicos</div>
-                  <div className="text-[11px] text-slate-500">SICE, Moodle, plataforma web</div>
-                </div>
+                <GraduationCap className="w-4 h-4 text-purple-600" />
+                <span>Sistemas Académicos</span>
               </button>
             </div>
           </div>
 
-          {/* Información General */}
-          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
-              1. Información General del Incidente
-            </h3>
+          {/* Sección 1: Información General del Incidente */}
+          <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/50 space-y-3">
+            <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between border-b border-slate-200 pb-2">
+              <span>1. Identificación y Alcance del Problema</span>
+              <span className="text-[10px] text-slate-400 font-normal">Campos requeridos *</span>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-              <div className="sm:col-span-3">
-                <label className="block text-slate-600 font-semibold mb-1">Título de la Incidencia *</label>
+              <div className="sm:col-span-2">
+                <label className="block text-slate-700 font-medium mb-1">
+                  Título Breve de la Falla *
+                </label>
                 <input
                   type="text"
                   required
-                  placeholder="Ej. Falla en proyector o gotera en laboratorio..."
+                  placeholder="Ej. Intermitencia en switch de laboratorio L-01 o falla de proyector..."
                   value={formData.titulo}
                   onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Prioridad *</label>
+                <label className="block text-slate-700 font-medium mb-1">
+                  Nivel de Prioridad *
+                </label>
                 <select
                   value={formData.prioridad}
                   onChange={(e) => setFormData({ ...formData, prioridad: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500 font-semibold"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white"
                 >
-                  <option value="baja">Baja</option>
-                  <option value="media">Media</option>
-                  <option value="alta">Alta</option>
-                  <option value="critica">Crítica</option>
+                  <option value="baja">Baja (Normal)</option>
+                  <option value="media">Media (Estándar)</option>
+                  <option value="alta">Alta (Urgente)</option>
+                  <option value="critica">Crítica (Interrupción)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-medium mb-1">
+                  Canal de Levantamiento *
+                </label>
+                <select
+                  value={formData.canal_origen}
+                  onChange={(e) => setFormData({ ...formData, canal_origen: e.target.value })}
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white"
+                >
+                  <option value="portal_autoservicio">Portal Web Autoservicio</option>
+                  <option value="ventanilla_presencial">Ventanilla Presencial</option>
+                  <option value="mesa_telefonica">Mesa de Ayuda Telefónica</option>
+                  <option value="correo_institucional">Correo Institucional</option>
+                  <option value="monitoreo_automatico">Monitoreo Red / IoT</option>
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-600 font-semibold mb-1">Descripción Detallada *</label>
+              <label className="block text-slate-700 font-medium mb-1">
+                Descripción Detallada del Incidente *
+              </label>
               <textarea
                 required
                 rows={2}
-                placeholder="Explique las circunstancias, síntomas observados y alcance de la falla..."
+                placeholder="Describa el comportamiento anómalo observado, el impacto en usuarios o clases y pasos de reproducción..."
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white"
               />
             </div>
           </div>
 
-          {/* Ubicación y Reportante */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Sección 2: Ubicación Física y Solicitante */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Ubicación */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
-              <div className="flex items-center space-x-1.5 text-emerald-700 font-bold">
-                <Building className="w-4 h-4" />
-                <span>Ubicación en Campus</span>
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2.5">
+              <div className="flex items-center space-x-1.5 text-slate-800 font-bold border-b border-slate-100 pb-1.5">
+                <Building2 className="w-4 h-4 text-slate-500" />
+                <span className="text-[11px] uppercase tracking-wider">Ubicación Física</span>
               </div>
               <div>
                 <label className="block text-slate-600 mb-1">Edificio *</label>
@@ -280,37 +299,37 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   required
                   value={formData.edificio}
                   onChange={(e) => setFormData({ ...formData, edificio: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 mb-1">Aula / Lab *</label>
+                  <label className="block text-slate-600 mb-1">Aula / Laboratorio *</label>
                   <input
                     type="text"
                     required
                     value={formData.aula_laboratorio}
                     onChange={(e) => setFormData({ ...formData, aula_laboratorio: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 mb-1">Piso</label>
+                  <label className="block text-slate-600 mb-1">Piso / Nivel</label>
                   <input
                     type="text"
                     value={formData.piso}
                     onChange={(e) => setFormData({ ...formData, piso: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Reportante */}
-            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2.5">
-              <div className="flex items-center space-x-1.5 text-blue-700 font-bold">
-                <User className="w-4 h-4" />
-                <span>Datos del Reportante</span>
+            {/* Solicitante */}
+            <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2.5">
+              <div className="flex items-center space-x-1.5 text-slate-800 font-bold border-b border-slate-100 pb-1.5">
+                <User className="w-4 h-4 text-slate-500" />
+                <span className="text-[11px] uppercase tracking-wider">Datos del Solicitante</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -318,10 +337,9 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Ing. Juan Pérez"
                     value={formData.reportante_nombre}
                     onChange={(e) => setFormData({ ...formData, reportante_nombre: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   />
                 </div>
                 <div>
@@ -329,20 +347,19 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <input
                     type="email"
                     required
-                    placeholder="usuario@utm.mx"
                     value={formData.reportante_email}
                     onChange={(e) => setFormData({ ...formData, reportante_email: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 font-mono"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 mb-1">Rol</label>
+                  <label className="block text-slate-600 mb-1">Rol Campus</label>
                   <select
                     value={formData.reportante_rol}
                     onChange={(e) => setFormData({ ...formData, reportante_rol: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   >
                     <option value="estudiante">Estudiante</option>
                     <option value="docente">Docente</option>
@@ -351,27 +368,29 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   </select>
                 </div>
                 <div>
-                  <label className="block text-slate-600 mb-1">Carrera / Área</label>
+                  <label className="block text-slate-600 mb-1">Departamento / Carrera</label>
                   <input
                     type="text"
-                    placeholder="Ej. Computación"
                     value={formData.reportante_departamento}
                     onChange={(e) => setFormData({ ...formData, reportante_departamento: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Sección 3: Campos Específicos Polimórficos */}
-          <div className="p-4 rounded-xl border border-slate-200 bg-white">
-            <h3 className="font-bold text-slate-800 uppercase tracking-wider text-[11px] mb-3">
-              3. Atributos Polimórficos de Categoría ({categoria.replace('_', ' ')})
-            </h3>
+          {/* Sección 3: Atributos Polimórficos de la Categoría */}
+          <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                3. Atributos Específicos ({categoria.replace('_', ' ')})
+              </span>
+              <span className="text-[10px] font-mono text-slate-400">Polymorphic Schema</span>
+            </div>
 
             {categoria === 'computo_telecomunicaciones' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-slate-600 mb-1">Tipo de Dispositivo *</label>
                   <input
@@ -379,7 +398,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     required
                     value={detalleComputo.tipo_dispositivo}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, tipo_dispositivo: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   />
                 </div>
                 <div>
@@ -388,7 +407,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     type="text"
                     value={detalleComputo.marca_modelo}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, marca_modelo: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   />
                 </div>
                 <div>
@@ -398,7 +417,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     placeholder="UTM-ACT-202X"
                     value={detalleComputo.numero_serie_activo}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, numero_serie_activo: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
                 <div>
@@ -408,17 +427,17 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     placeholder="10.20.X.X"
                     value={detalleComputo.direccion_ip}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, direccion_ip: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 mb-1">MAC Address</label>
+                  <label className="block text-slate-600 mb-1">Dirección MAC</label>
                   <input
                     type="text"
                     placeholder="AA:BB:CC:DD:EE:FF"
                     value={detalleComputo.mac_address}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, mac_address: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
                 <div>
@@ -426,7 +445,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <select
                     value={detalleComputo.tipo_falla_red}
                     onChange={(e) => setDetalleComputo({ ...detalleComputo, tipo_falla_red: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   >
                     <option value="sin_conexion">Sin Conexión</option>
                     <option value="intermitencia">Intermitencia</option>
@@ -438,13 +457,13 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
             )}
 
             {categoria === 'infraestructura_mantenimiento' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-slate-600 mb-1">Tipo de Servicio *</label>
                   <select
                     value={detalleInfra.tipo_servicio}
                     onChange={(e) => setDetalleInfra({ ...detalleInfra, tipo_servicio: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   >
                     <option value="electricidad">Electricidad</option>
                     <option value="plomeria_fontaneria">Plomería y Fontanería</option>
@@ -458,7 +477,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <select
                     value={detalleInfra.nivel_urgencia}
                     onChange={(e) => setDetalleInfra({ ...detalleInfra, nivel_urgencia: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   >
                     <option value="rutinario">Rutinario</option>
                     <option value="urgente">Urgente</option>
@@ -470,7 +489,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <select
                     value={detalleInfra.tipo_suministro_afectado}
                     onChange={(e) => setDetalleInfra({ ...detalleInfra, tipo_suministro_afectado: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   >
                     <option value="ninguno">Ninguno</option>
                     <option value="energia_electrica">Energía Eléctrica</option>
@@ -483,10 +502,10 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <input
                     type="text"
                     required
-                    placeholder="Ej. Tubería rota con fuga activa..."
+                    placeholder="Ej. Fuga de agua activa bajo tarja, contacto sobrecalentado..."
                     value={detalleInfra.tipo_dano}
                     onChange={(e) => setDetalleInfra({ ...detalleInfra, tipo_dano: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   />
                 </div>
                 <div className="flex items-center space-x-2 pt-1 sm:col-span-3">
@@ -495,7 +514,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     id="corte"
                     checked={detalleInfra.requiere_corte_suministro}
                     onChange={(e) => setDetalleInfra({ ...detalleInfra, requiere_corte_suministro: e.target.checked })}
-                    className="rounded text-amber-600"
+                    className="rounded text-slate-900 border-slate-300"
                   />
                   <label htmlFor="corte" className="text-slate-700 font-medium cursor-pointer">
                     Requiere corte urgente del suministro principal (agua / luz)
@@ -505,13 +524,13 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
             )}
 
             {categoria === 'sistemas_servicios_academicos' && (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                 <div>
                   <label className="block text-slate-600 mb-1">Plataforma Institucional *</label>
                   <select
                     value={detalleSistemas.plataforma}
                     onChange={(e) => setDetalleSistemas({ ...detalleSistemas, plataforma: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-semibold"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold"
                   >
                     <option value="SICE">SICE (Control Escolar)</option>
                     <option value="Moodle_Campus_Virtual">Moodle (Campus Virtual)</option>
@@ -523,10 +542,10 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                   <label className="block text-slate-600 mb-1">Módulo del Sistema</label>
                   <input
                     type="text"
-                    placeholder="Ej. Inscripción, Actas..."
+                    placeholder="Ej. Inscripciones, Actas, Calificaciones..."
                     value={detalleSistemas.modulo_afectado}
                     onChange={(e) => setDetalleSistemas({ ...detalleSistemas, modulo_afectado: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs"
                   />
                 </div>
                 <div>
@@ -536,7 +555,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     placeholder="Ej. 20240101 o Grupo 401"
                     value={detalleSistemas.matricula_estudiante_afectado}
                     onChange={(e) => setDetalleSistemas({ ...detalleSistemas, matricula_estudiante_afectado: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -545,7 +564,7 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     type="text"
                     value={detalleSistemas.url_modulo}
                     onChange={(e) => setDetalleSistemas({ ...detalleSistemas, url_modulo: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
                 <div>
@@ -555,35 +574,36 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     placeholder="500, 403, 404..."
                     value={detalleSistemas.codigo_error_http}
                     onChange={(e) => setDetalleSistemas({ ...detalleSistemas, codigo_error_http: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-200">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end space-x-2.5 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg"
+              className="px-4 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-md transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="inline-flex items-center space-x-2 px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-sm shadow-emerald-600/30 disabled:opacity-50"
+              className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 active:bg-slate-950 rounded-md shadow-xs disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Guardando en MongoDB Atlas...</span>
                 </>
               ) : (
                 <>
-                  <Send className="w-4 h-4" />
-                  <span>Crear Expediente</span>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Crear Ticket de Incidencia</span>
                 </>
               )}
             </button>

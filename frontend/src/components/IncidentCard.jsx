@@ -27,7 +27,7 @@ export default function IncidentCard({ incidencia, onSelect }) {
     createdAt,
   } = incidencia;
 
-  // Badge de Estado
+  // Badge de Estado Micro-Enterprise
   const getStatusBadge = (status) => {
     const config = {
       abierta: {
@@ -61,7 +61,7 @@ export default function IncidentCard({ incidencia, onSelect }) {
 
     return (
       <span
-        className={`inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${current.bg}`}
+        className={`inline-flex items-center space-x-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${current.bg}`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${current.dot}`}></span>
         <span>{current.label}</span>
@@ -75,22 +75,18 @@ export default function IncidentCard({ incidencia, onSelect }) {
       critica: {
         bg: 'bg-rose-50 text-rose-700 border-rose-200',
         label: 'Crítica',
-        icon: <Flame className="w-3 h-3 text-rose-600 animate-pulse" />,
       },
       alta: {
         bg: 'bg-orange-50 text-orange-700 border-orange-200',
         label: 'Alta',
-        icon: <AlertTriangle className="w-3 h-3 text-orange-600" />,
       },
       media: {
         bg: 'bg-amber-50 text-amber-700 border-amber-200',
         label: 'Media',
-        icon: null,
       },
       baja: {
         bg: 'bg-slate-50 text-slate-600 border-slate-200',
         label: 'Baja',
-        icon: null,
       },
     };
 
@@ -98,39 +94,33 @@ export default function IncidentCard({ incidencia, onSelect }) {
 
     return (
       <span
-        className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-semibold border ${current.bg}`}
+        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${current.bg}`}
       >
-        {current.icon}
         <span>{current.label}</span>
       </span>
     );
   };
 
-  // Icono y Etiqueta de Categoría
   const getCategoryInfo = (cat) => {
     switch (cat) {
       case 'computo_telecomunicaciones':
         return {
           label: 'Cómputo & Redes',
-          icon: <Cpu className="w-3.5 h-3.5 text-blue-600" />,
-          color: 'text-blue-700 bg-blue-50/70 border-blue-200',
+          color: 'text-blue-700 bg-blue-50 border-blue-200',
         };
       case 'infraestructura_mantenimiento':
         return {
           label: 'Infraestructura',
-          icon: <Wrench className="w-3.5 h-3.5 text-amber-600" />,
-          color: 'text-amber-700 bg-amber-50/70 border-amber-200',
+          color: 'text-amber-700 bg-amber-50 border-amber-200',
         };
       case 'sistemas_servicios_academicos':
         return {
           label: 'Sistemas Académicos',
-          icon: <GraduationCap className="w-3.5 h-3.5 text-purple-600" />,
-          color: 'text-purple-700 bg-purple-50/70 border-purple-200',
+          color: 'text-purple-700 bg-purple-50 border-purple-200',
         };
       default:
         return {
           label: 'Campus General',
-          icon: null,
           color: 'text-slate-700 bg-slate-50 border-slate-200',
         };
     }
@@ -141,81 +131,74 @@ export default function IncidentCard({ incidencia, onSelect }) {
   return (
     <div
       onClick={() => onSelect(incidencia)}
-      className="group bg-white rounded-xl border border-slate-200/90 hover:border-emerald-400 p-5 shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between"
+      className="group bg-white rounded-lg border border-slate-200 p-4 shadow-xs hover:border-slate-400 hover:shadow-sm transition-all duration-150 cursor-pointer flex flex-col justify-between"
     >
       <div>
         {/* Encabezado: Código, Categoría y Prioridad */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center space-x-2">
-            <span className="font-mono font-bold text-xs text-slate-800 bg-slate-100 group-hover:bg-emerald-50 group-hover:text-emerald-800 px-2 py-0.5 rounded transition-colors border border-slate-200">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div className="flex items-center space-x-1.5">
+            <span className="font-mono font-bold text-xs text-slate-900 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
               {codigo}
             </span>
             <span
-              className={`inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-medium border ${categoryInfo.color}`}
+              className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border ${categoryInfo.color}`}
             >
-              {categoryInfo.icon}
               <span>{categoryInfo.label}</span>
             </span>
           </div>
 
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1">
             {getPriorityBadge(prioridad)}
           </div>
         </div>
 
         {/* Título y Descripción */}
-        <h3 className="font-bold text-slate-900 text-sm group-hover:text-emerald-700 transition-colors line-clamp-2 mb-1.5 leading-snug">
+        <h3 className="font-bold text-slate-900 text-sm group-hover:text-slate-700 transition-colors line-clamp-1 mb-1 leading-snug">
           {titulo}
         </h3>
-        <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">
+        <p className="text-xs text-slate-500 line-clamp-2 mb-3 leading-relaxed">
           {descripcion}
         </p>
       </div>
 
       <div>
         {/* Ubicación: Edificio y Aula */}
-        <div className="bg-slate-50/80 rounded-lg p-2.5 mb-3.5 border border-slate-100 space-y-1">
-          <div className="flex items-center text-xs text-slate-700 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mr-1.5" />
-            <span className="truncate">{ubicacion?.edificio || 'Campus UTM'}</span>
-          </div>
-          <div className="text-[11px] text-slate-500 pl-5 truncate font-mono">
-            {ubicacion?.aula_laboratorio} • {ubicacion?.piso || 'Planta Baja'}
-          </div>
+        <div className="bg-slate-50 rounded-md p-2 mb-3 border border-slate-100 text-[11px] text-slate-600 font-mono truncate">
+          <span className="text-slate-800 font-semibold">{ubicacion?.edificio || 'Campus UTM'}</span> • {ubicacion?.aula_laboratorio}
         </div>
 
         {/* Pie de Tarjeta: Estado, Contadores y Acción */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs">
+        <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs">
           <div>{getStatusBadge(estado)}</div>
 
-          <div className="flex items-center space-x-3 text-slate-400">
+          <div className="flex items-center space-x-2 text-slate-400">
             {/* Contador de Evidencias */}
             <div
-              className={`flex items-center space-x-1 text-[11px] ${
-                evidencias_adjuntas.length > 0 ? 'text-teal-600 font-medium' : ''
+              className={`flex items-center space-x-1 text-[11px] font-mono ${
+                evidencias_adjuntas.length > 0 ? 'text-slate-700 font-semibold' : ''
               }`}
-              title={`${evidencias_adjuntas.length} evidencias adjuntas en Supabase`}
+              title={`${evidencias_adjuntas.length} evidencias adjuntas`}
             >
-              <Paperclip className="w-3.5 h-3.5" />
+              <Paperclip className="w-3 h-3" />
               <span>{evidencias_adjuntas.length}</span>
             </div>
 
             {/* Contador de Revisiones */}
             <div
-              className={`flex items-center space-x-1 text-[11px] ${
-                revisiones.length > 0 ? 'text-emerald-600 font-medium' : ''
+              className={`flex items-center space-x-1 text-[11px] font-mono ${
+                revisiones.length > 0 ? 'text-slate-700 font-semibold' : ''
               }`}
               title={`${revisiones.length} revisiones técnicas`}
             >
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3 h-3" />
               <span>{revisiones.length}</span>
             </div>
 
             <span className="text-slate-300">|</span>
 
-            <span className="text-emerald-600 group-hover:translate-x-0.5 transition-transform flex items-center font-semibold text-[11px]">
+            <span className="text-slate-900 font-semibold text-[11px] group-hover:translate-x-0.5 transition-transform flex items-center">
               Expediente
-              <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+              <ArrowRight className="w-3 h-3 ml-0.5" />
             </span>
           </div>
         </div>

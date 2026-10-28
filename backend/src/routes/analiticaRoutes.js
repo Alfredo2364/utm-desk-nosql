@@ -7,16 +7,18 @@ const {
   getAulasCronicas,
 } = require('../controllers/analiticaController');
 
-// Todas las rutas de analítica requieren rol Directivo, Admin o Supervisor
-router.use(verificarRol('directivo', 'admin', 'supervisor'));
+// Según Tabla 4: Consultar analítica y generar reportes -> Supervisor, Directivo, Admin y SuperAdmin
+router.use(verificarRol('directivo', 'supervisor', 'admin', 'superadmin'));
 
 // GET /api/analitica/metricas
 router.get('/metricas', getMetricasGenerales);
 
-// GET /api/analitica/mttr
+// RF-07 | GET /api/analitica/tiempo-medio (y alias /mttr)
+router.get('/tiempo-medio', getMTTR);
 router.get('/mttr', getMTTR);
 
-// GET /api/analitica/aulas-cronicas
+// RF-08 | GET /api/analitica/fallas-cronicas (y alias /aulas-cronicas)
+router.get('/fallas-cronicas', getAulasCronicas);
 router.get('/aulas-cronicas', getAulasCronicas);
 
 module.exports = router;

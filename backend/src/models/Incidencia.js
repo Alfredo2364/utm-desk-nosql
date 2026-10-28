@@ -1,31 +1,58 @@
 const mongoose = require('mongoose');
 
-// Subdocumento embebido: Revisiones Técnicas
+const ESTADOS_VALIDOS = [
+  'abierta',
+  'asignada',
+  'en_proceso',
+  'en_progreso',
+  'pendiente_revision',
+  'resuelta',
+  'cerrada',
+];
+
+// Subdocumento embebido: Revisiones Técnicas (compatible con Figuras 2-4 del ERS y UI)
 const revisionSchema = new mongoose.Schema(
   {
+    tecnicoId: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    fecha: {
+      type: Date,
+      default: Date.now,
+    },
     fecha_revision: {
       type: Date,
       default: Date.now,
-      required: true,
     },
     tecnico: {
-      nombre: { type: String, required: true },
-      id_tecnico: { type: String, required: true },
+      nombre: { type: String, default: 'Técnico UTM' },
+      id_tecnico: { type: String, default: 'TEC-UTM' },
       departamento: { type: String, default: 'Soporte Técnico UTM' },
+    },
+    comentario: {
+      type: String,
+      trim: true,
     },
     diagnostico: {
       type: String,
-      required: true,
       trim: true,
+    },
+    estadoAnterior: {
+      type: String,
+      enum: ESTADOS_VALIDOS,
     },
     estado_anterior: {
       type: String,
-      enum: ['abierta', 'en_progreso', 'pendiente_revision', 'resuelta', 'cerrada'],
+      enum: ESTADOS_VALIDOS,
+    },
+    estadoNuevo: {
+      type: String,
+      enum: ESTADOS_VALIDOS,
     },
     estado_asignado: {
       type: String,
-      required: true,
-      enum: ['abierta', 'en_progreso', 'pendiente_revision', 'resuelta', 'cerrada'],
+      enum: ESTADOS_VALIDOS,
     },
     accion_realizada: {
       type: String,
@@ -39,7 +66,19 @@ const revisionSchema = new mongoose.Schema(
   { _id: true }
 );
 
-// Subdocumento embebido: Evidencias Adjuntas (Almacenadas en Supabase Storage)
+revisionSchema.pre('validate', function (next) {
+  if (this.comentario && !this.diagnostico) this.diagnostico = this.comentario;
+  if (this.diagnostico && !this.comentario) this.comentario = this.diagnostico;
+  if (this.estadoAnterior && !this.estado_anterior) this.estado_anterior = this.estadoAnterior;
+  if (this.estado_anterior && !this.estadoAnterior) this.estadoAnterior = this.estado_anterior;
+  if (this.estadoNuevo && !this.estado_asignado) this.estado_asignado = this.estadoNuevo;
+  if (this.estado_asignado && !this.estadoNuevo) this.estadoNuevo = this.estado_asignado;
+  if (this.fecha && !this.fecha_revision) this.fecha_revision = this.fecha;
+  if (this.fecha_revision && !this.fecha) this.fecha = this.fecha_revision;
+  next();
+});
+
+// Subdocumento embebido: Evidencias Adjuntas (Almacenadas en Supabase Storage, compatible con Figuras 2-4 y UI)
 const evidenciaSchema = new mongoose.Schema(
   {
     nombre_archivo: {
@@ -48,33 +87,51 @@ const evidenciaSchema = new mongoose.Schema(
     },
     nombre_original: {
       type: String,
-      required: true,
     },
     tipo_mime: {
       type: String,
       required: true,
-      enum: ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'],
+      enum: ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf', 'image/webp'],
+    },
+    peso_kb: {
+      type: Number,
+      default: 0,
     },
     tamanio_bytes: {
       type: Number,
-      required: true,
+      default: 0,
       max: [5242880, 'El archivo excede el tamaño máximo permitido de 5MB'],
+    },
+    tamanio_original_bytes: {
+      type: Number,
+      default: 0,
+    },
+    ahorro_compresion: {
+      type: String,
+      default: '0%',
+    },
+    ruta_storage: {
+      type: String,
     },
     supabase_path: {
       type: String,
-      required: true,
+    },
+    url_storage: {
+      type: String,
     },
     url_firmada: {
       type: String,
-      required: true,
     },
     url_expira: {
       type: Date,
-      required: true,
     },
     subido_por: {
       type: String,
       default: 'Usuario del Campus',
+    },
+    fecha_carga: {
+      type: Date,
+      default: Date.now,
     },
     fecha_subida: {
       type: Date,
@@ -84,16 +141,27 @@ const evidenciaSchema = new mongoose.Schema(
   { _id: true }
 );
 
+evidenciaSchema.pre('validate', function (next) {
+  if (!this.nombre_original && this.nombre_archivo) this.nombre_original = this.nombre_archivo;
+  if (!this.ruta_storage && this.supabase_path) this.ruta_storage = this.supabase_path;
+  if (!this.supabase_path && this.ruta_storage) this.supabase_path = this.ruta_storage;
+  if (!this.url_storage && this.url_firmada) this.url_storage = this.url_firmada;
+  if (!this.url_firmada && this.url_storage) this.url_firmada = this.url_storage;
+  if (!this.peso_kb && this.tamanio_bytes) this.peso_kb = Math.max(1, Math.round(this.tamanio_bytes / 1024));
+  if (!this.tamanio_bytes && this.peso_kb) this.tamanio_bytes = this.peso_kb * 1024;
+  if (!this.fecha_carga && this.fecha_subida) this.fecha_carga = this.fecha_subida;
+  if (!this.fecha_subida && this.fecha_carga) this.fecha_subida = this.fecha_carga;
+  next();
+});
+
 // Esquema Principal Polimórfico: Incidencias de Campus
 const incidenciaSchema = new mongoose.Schema(
   {
     codigo: {
       type: String,
       required: [true, 'El código de incidencia es obligatorio'],
-      unique: true,
       trim: true,
       uppercase: true,
-      index: true,
     },
     titulo: {
       type: String,
@@ -117,38 +185,67 @@ const incidenciaSchema = new mongoose.Schema(
         ],
         message: 'Categoría no válida en el campus',
       },
-      index: true,
     },
     estado: {
       type: String,
       required: true,
-      enum: ['abierta', 'en_progreso', 'pendiente_revision', 'resuelta', 'cerrada'],
+      enum: ESTADOS_VALIDOS,
       default: 'abierta',
-      index: true,
     },
     prioridad: {
       type: String,
       required: true,
       enum: ['baja', 'media', 'alta', 'critica'],
       default: 'media',
-      index: true,
+    },
+    canal_origen: {
+      type: String,
+      enum: [
+        'portal_autoservicio',
+        'ventanilla_presencial',
+        'mesa_telefonica',
+        'correo_institucional',
+        'monitoreo_automatico',
+      ],
+      default: 'portal_autoservicio',
     },
     ubicacion: {
-      edificio: { type: String, required: true, trim: true },
-      aula_laboratorio: { type: String, required: true, trim: true },
+      edificioId: { type: String, trim: true },
+      aula: { type: String, trim: true },
+      edificio: { type: String, trim: true },
+      aula_laboratorio: { type: String, trim: true },
       piso: { type: String, default: 'Planta Baja' },
       referencias: { type: String, default: '' },
     },
+    // Referencias directas de colección según Tabla 7 y Figuras 2-4
+    reportadoPor: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    asignadoA: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    fechaReporte: {
+      type: Date,
+      default: Date.now,
+    },
+    fechaResolucion: {
+      type: Date,
+      default: null,
+    },
+    tiempoResolucionMin: {
+      type: Number,
+      default: null,
+    },
+    // Información enriquecida del reportante para la interfaz
     reportante: {
-      nombre: { type: String, required: true },
-      email: { type: String, required: true },
-      rol: {
-        type: String,
-        default: 'estudiante',
-      },
+      nombre: { type: String, default: 'Usuario Campus' },
+      email: { type: String, default: 'alumno.garcia@utm.mx' },
+      rol: { type: String, default: 'reportante' },
       departamento_carrera: { type: String, default: 'General' },
     },
-    // Campo Polimórfico: Su estructura varía según el valor de 'categoria'
+    // Campo Polimórfico: Su estructura varía según el valor de 'categoria' (Figuras 2, 3 y 4)
     detalle: {
       type: mongoose.Schema.Types.Mixed,
       required: true,
@@ -157,34 +254,37 @@ const incidenciaSchema = new mongoose.Schema(
           if (!detalle || typeof detalle !== 'object') return false;
 
           if (this.categoria === 'computo_telecomunicaciones') {
-            return (
-              detalle.tipo_dispositivo &&
-              typeof detalle.tipo_dispositivo === 'string'
+            return Boolean(
+              detalle.tipo_dispositivo ||
+              detalle.ip ||
+              detalle.direccion_ip ||
+              detalle.puertoUplink
             );
           }
           if (this.categoria === 'infraestructura_mantenimiento') {
-            return (
-              detalle.tipo_servicio &&
-              typeof detalle.tipo_servicio === 'string'
+            return Boolean(
+              detalle.tipo_servicio ||
+              detalle.tipoDano ||
+              detalle.insumos
             );
           }
           if (this.categoria === 'sistemas_servicios_academicos') {
-            return (
-              detalle.plataforma &&
-              typeof detalle.plataforma === 'string'
+            return Boolean(
+              detalle.plataforma && typeof detalle.plataforma === 'string'
             );
           }
           return true;
         },
-        message: 'Los atributos del campo detalle no cumplen con los requerimientos polimórficos de la categoría especificada.',
+        message:
+          'Los atributos del campo detalle no cumplen con los requerimientos polimórficos de la categoría especificada.',
       },
     },
     // Subdocumentos Embebidos
     revisiones: [revisionSchema],
     evidencias_adjuntas: [evidenciaSchema],
-    // Técnico asignado para RBAC
+    // Técnico asignado enriquecido para RBAC
     tecnico_asignado: {
-      id: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null },
+      id: { type: mongoose.Schema.Types.Mixed, default: null },
       nombre: { type: String, default: null },
       email: { type: String, default: null },
       id_tecnico: { type: String, default: null },
@@ -192,7 +292,6 @@ const incidenciaSchema = new mongoose.Schema(
       fecha_asignacion: { type: Date, default: null },
       asignado_por: { type: String, default: null },
     },
-    // Fecha en la que la incidencia pasó a 'resuelta' (para métricas MTTR)
     fecha_resolucion: {
       type: Date,
       default: null,
@@ -204,9 +303,83 @@ const incidenciaSchema = new mongoose.Schema(
   }
 );
 
-// Índices compuestos para optimizar búsquedas por filtros frecuentes
-incidenciaSchema.index({ categoria: 1, estado: 1 });
-incidenciaSchema.index({ 'ubicacion.edificio': 1 });
+// Sincronización automática de campos entre formato ERS (Figuras 2-4) y UI
+incidenciaSchema.pre('validate', function (next) {
+  if (this.ubicacion) {
+    if (this.ubicacion.edificioId && !this.ubicacion.edificio) {
+      this.ubicacion.edificio = this.ubicacion.edificioId;
+    }
+    if (this.ubicacion.edificio && !this.ubicacion.edificioId) {
+      // Extraer clave corta si viene como "Edificio A (ED-A)" o usar el valor
+      const match = this.ubicacion.edificio.match(/\((ED-[A-Z0-9]+)\)/i);
+      this.ubicacion.edificioId = match ? match[1].toUpperCase() : this.ubicacion.edificio;
+    }
+    if (this.ubicacion.aula && !this.ubicacion.aula_laboratorio) {
+      this.ubicacion.aula_laboratorio = this.ubicacion.aula;
+    }
+    if (this.ubicacion.aula_laboratorio && !this.ubicacion.aula) {
+      this.ubicacion.aula = this.ubicacion.aula_laboratorio;
+    }
+  }
+
+  // Sincronizar fechas de resolución y cálculo de tiempoResolucionMin
+  if (this.fechaResolucion && !this.fecha_resolucion) {
+    this.fecha_resolucion = this.fechaResolucion;
+  }
+  if (this.fecha_resolucion && !this.fechaResolucion) {
+    this.fechaResolucion = this.fecha_resolucion;
+  }
+  if (!this.fechaReporte) {
+    this.fechaReporte = this.createdAt || new Date();
+  }
+  if (this.fechaResolucion && this.tiempoResolucionMin == null) {
+    const inicio = new Date(this.fechaReporte || this.createdAt || Date.now()).getTime();
+    const fin = new Date(this.fechaResolucion).getTime();
+    this.tiempoResolucionMin = Math.max(1, Math.round((fin - inicio) / 60000));
+  }
+
+  // Sincronizar detalle polimórfico (Figuras 2-4 <-> UI)
+  if (this.detalle && typeof this.detalle === 'object') {
+    if (this.categoria === 'computo_telecomunicaciones') {
+      if (this.detalle.ip && !this.detalle.direccion_ip) this.detalle.direccion_ip = this.detalle.ip;
+      if (this.detalle.direccion_ip && !this.detalle.ip) this.detalle.ip = this.detalle.direccion_ip;
+      if (this.detalle.vlan && !this.detalle.segmento_vlan) this.detalle.segmento_vlan = `VLAN-${this.detalle.vlan}`;
+      if (!this.detalle.tipo_dispositivo && (this.detalle.ip || this.detalle.puertoUplink)) {
+        this.detalle.tipo_dispositivo = 'Switch / Nodo de Red';
+      }
+    } else if (this.categoria === 'infraestructura_mantenimiento') {
+      if (this.detalle.tipoDano && !this.detalle.tipo_servicio) this.detalle.tipo_servicio = this.detalle.tipoDano;
+      if (this.detalle.tipo_servicio && !this.detalle.tipoDano) this.detalle.tipoDano = this.detalle.tipo_servicio;
+      if (Array.isArray(this.detalle.insumos) && !this.detalle.materiales_requeridos) {
+        this.detalle.materiales_requeridos = this.detalle.insumos;
+      }
+      if (Array.isArray(this.detalle.materiales_requeridos) && !this.detalle.insumos) {
+        this.detalle.insumos = this.detalle.materiales_requeridos;
+      }
+    } else if (this.categoria === 'sistemas_servicios_academicos') {
+      if (this.detalle.estudiantesAfectados != null && this.detalle.usuarios_afectados == null) {
+        this.detalle.usuarios_afectados = this.detalle.estudiantesAfectados;
+      }
+      if (this.detalle.usuarios_afectados != null && this.detalle.estudiantesAfectados == null) {
+        this.detalle.estudiantesAfectados = this.detalle.usuarios_afectados;
+      }
+      if (this.detalle.codigoCurso && !this.detalle.modulo_afectado) {
+        this.detalle.modulo_afectado = `${this.detalle.codigoCurso} (${this.detalle.periodoEscolar || '2026-3'})`;
+      }
+    }
+  }
+
+  next();
+});
+
+// Tabla 8 (Página 14 del ERS): Los 4 índices oficiales definidos sobre incidencias_campus
+incidenciaSchema.index({ codigo: 1 }, { unique: true, name: 'idx_codigo_unico' });
+incidenciaSchema.index({ categoria: 1, estado: 1 }, { name: 'idx_categoria_estado' });
+incidenciaSchema.index(
+  { 'ubicacion.edificioId': 1, 'ubicacion.aula': 1, fechaReporte: -1 },
+  { name: 'idx_ubicacion_historial' }
+);
+incidenciaSchema.index({ fechaReporte: -1 }, { name: 'idx_fecha_reporte' });
 
 const Incidencia = mongoose.model('Incidencia', incidenciaSchema);
 

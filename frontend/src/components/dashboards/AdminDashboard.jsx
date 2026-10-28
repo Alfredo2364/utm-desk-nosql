@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   ShieldAlert,
   Users,
-  Building,
+  Building2,
   BarChart3,
   Layers,
   Plus,
@@ -13,6 +13,7 @@ import {
   Loader2,
   UserCheck,
   AlertCircle,
+  Settings,
 } from 'lucide-react';
 import SupervisorDashboard from './SupervisorDashboard';
 import DirectivoDashboard from './DirectivoDashboard';
@@ -34,9 +35,11 @@ export default function AdminDashboard({
   loading,
   onSelectIncidencia,
   onRefresh,
+  onOpenNewModal,
+  defaultTab = 'operativa',
 }) {
   const { currentUser, usuariosDemo } = useAuth();
-  const [activeTab, setActiveTab] = useState('operativa'); // 'operativa' | 'analitica' | 'usuarios' | 'edificios'
+  const [activeTab, setActiveTab] = useState(defaultTab); // 'operativa' | 'analitica' | 'usuarios' | 'edificios'
 
   // Estados Catálogo de Usuarios
   const [usuarios, setUsuarios] = useState([]);
@@ -91,6 +94,11 @@ export default function AdminDashboard({
       setLoadingEdificios(false);
     }
   };
+
+  useEffect(() => {
+    fetchUsuarios();
+    fetchEdificios();
+  }, []);
 
   useEffect(() => {
     if (activeTab === 'usuarios') fetchUsuarios();
@@ -190,60 +198,69 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
-      {/* Banner Principal de Administrador */}
-      <div className="bg-slate-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-4 animate-fadeIn">
+      {/* Header Enterprise Admin */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-xs font-semibold mb-2 border border-rose-500/30">
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
-            <span>Perfil: Administrador General (Control Total)</span>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-base font-bold text-slate-900 tracking-tight">
+              Consola Maestra de Administración
+            </h1>
+            <span className="font-mono text-[10px] bg-slate-900 text-white px-2 py-0.5 rounded font-bold uppercase">
+              ADMIN CONTROL TOTAL
+            </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black">
-            Consola Maestra de Administración
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-            Gestión operativa transversal, módulo de analítica directiva y administración exclusiva de catálogos institucionales.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Gestión operativa transversal, BI directivo y administración de catálogos maestros institucionales
           </p>
         </div>
 
-        {/* Pestañas de Navegación de Administrador */}
-        <div className="flex flex-wrap items-center bg-slate-800 p-1.5 rounded-xl border border-slate-700 text-xs font-semibold">
+        {/* Tab Navigation Enterprise */}
+        <div className="flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold shrink-0">
           <button
             onClick={() => setActiveTab('operativa')}
-            className={`px-3.5 py-2 rounded-lg transition-all ${
-              activeTab === 'operativa' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'operativa'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Gestión Operativa
+            Operativa
           </button>
           <button
             onClick={() => setActiveTab('analitica')}
-            className={`px-3.5 py-2 rounded-lg transition-all ${
-              activeTab === 'analitica' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'analitica'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             Analítica
           </button>
           <button
             onClick={() => setActiveTab('usuarios')}
-            className={`px-3.5 py-2 rounded-lg transition-all ${
-              activeTab === 'usuarios' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'usuarios'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Catálogo Usuarios
+            Usuarios ({usuarios.length})
           </button>
           <button
             onClick={() => setActiveTab('edificios')}
-            className={`px-3.5 py-2 rounded-lg transition-all ${
-              activeTab === 'edificios' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-white'
+            className={`px-3 py-1.5 rounded-md transition-all ${
+              activeTab === 'edificios'
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Catálogo Edificios
+            Edificios ({edificios.length})
           </button>
         </div>
       </div>
 
-      {/* Renderizado Condicional de la Pestaña Activa */}
+      {/* Renderizado de la Pestaña Activa */}
       {activeTab === 'operativa' && (
         <SupervisorDashboard
           incidencias={incidencias}
@@ -251,6 +268,7 @@ export default function AdminDashboard({
           loading={loading}
           onSelectIncidencia={onSelectIncidencia}
           onRefresh={onRefresh}
+          onOpenNewModal={onOpenNewModal}
           onNavigateToAnalitica={() => setActiveTab('analitica')}
         />
       )}
@@ -259,17 +277,17 @@ export default function AdminDashboard({
 
       {/* 3. CRUD Catálogo de Usuarios */}
       {activeTab === 'usuarios' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs space-y-0">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
             <div>
-              <div className="flex items-center space-x-2">
-                <Users className="w-5 h-5 text-indigo-600" />
-                <h3 className="font-extrabold text-slate-900 text-base">
-                  Catálogo de Usuarios del Campus ({usuarios.length})
+              <div className="flex items-center space-x-1.5">
+                <Users className="w-4 h-4 text-slate-700" />
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Catálogo Maestro de Usuarios del Campus ({usuarios.length})
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Alta, asignación de roles RBAC y áreas técnicas de especialización
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Gestión de cuentas institucionales, asignación de roles RBAC y áreas técnicas de especialidad
               </p>
             </div>
 
@@ -286,9 +304,9 @@ export default function AdminDashboard({
                 });
                 setShowUserModal(true);
               }}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs"
+              className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Nuevo Usuario</span>
             </button>
           </div>
@@ -300,23 +318,23 @@ export default function AdminDashboard({
           ) : (
             <div className="overflow-x-auto text-xs">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+                <thead className="bg-white text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
                   <tr>
-                    <th className="px-4 py-3">Nombre</th>
-                    <th className="px-4 py-3">Correo Institucional</th>
-                    <th className="px-4 py-3">Rol RBAC</th>
-                    <th className="px-4 py-3">Área Especialidad</th>
-                    <th className="px-4 py-3">Cargo / Carrera</th>
-                    <th className="px-4 py-3 text-right">Acciones</th>
+                    <th className="px-4 py-2.5">Nombre</th>
+                    <th className="px-4 py-2.5">Correo Institucional</th>
+                    <th className="px-4 py-2.5">Rol RBAC</th>
+                    <th className="px-4 py-2.5">Área Especialidad</th>
+                    <th className="px-4 py-2.5">Cargo / Carrera</th>
+                    <th className="px-4 py-2.5 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {usuarios.map((u) => (
-                    <tr key={u._id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-4 py-3 font-bold text-slate-900">{u.nombre}</td>
+                    <tr key={u._id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-slate-900">{u.nombre}</td>
                       <td className="px-4 py-3 font-mono text-slate-600">{u.email}</td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-100 text-indigo-800 border border-indigo-200">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-800 border border-slate-200">
                           {u.rol}
                         </span>
                       </td>
@@ -324,7 +342,7 @@ export default function AdminDashboard({
                         {u.area?.replace('_', ' ')}
                       </td>
                       <td className="px-4 py-3 text-slate-500">{u.cargo || u.departamento_carrera}</td>
-                      <td className="px-4 py-3 text-right space-x-2">
+                      <td className="px-4 py-3 text-right space-x-1">
                         <button
                           onClick={() => {
                             setEditingUser(u);
@@ -338,13 +356,15 @@ export default function AdminDashboard({
                             });
                             setShowUserModal(true);
                           }}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                          className="p-1.5 text-slate-400 hover:text-slate-800 hover:bg-slate-100 rounded"
+                          title="Editar Usuario"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteUser(u._id, u.nombre)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded"
+                          title="Eliminar Usuario"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -360,25 +380,25 @@ export default function AdminDashboard({
 
       {/* 4. CRUD Catálogo de Edificios y Aulas */}
       {activeTab === 'edificios' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs space-y-0">
+          <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
             <div>
-              <div className="flex items-center space-x-2">
-                <Building className="w-5 h-5 text-blue-600" />
-                <h3 className="font-extrabold text-slate-900 text-base">
-                  Catálogo de Edificios y Aulas ({edificios.length})
+              <div className="flex items-center space-x-1.5">
+                <Building2 className="w-4 h-4 text-slate-700" />
+                <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                  Catálogo Maestro de Edificios y Espacios Físicos ({edificios.length})
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Estructura física del campus universitario para ubicación exacta de incidencias
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Estructura física del campus universitario para ubicación y enrutamiento exacto de incidencias
               </p>
             </div>
 
             <button
               onClick={() => setShowEdificioModal(true)}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs"
+              className="inline-flex items-center space-x-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-xs font-semibold shadow-xs transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Nuevo Edificio</span>
             </button>
           </div>
@@ -388,12 +408,12 @@ export default function AdminDashboard({
               Cargando edificios desde MongoDB Atlas...
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               {edificios.map((edif) => (
-                <div key={edif._id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div key={edif._id} className="p-3.5 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="font-mono font-bold text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                      <span className="font-mono font-bold text-xs bg-slate-200 text-slate-900 px-2 py-0.5 rounded border border-slate-300">
                         {edif.codigo}
                       </span>
                       <h4 className="font-bold text-slate-900 text-sm mt-1">{edif.nombre}</h4>
@@ -401,22 +421,23 @@ export default function AdminDashboard({
                     <button
                       onClick={() => handleDeleteEdificio(edif._id, edif.nombre)}
                       className="text-slate-400 hover:text-rose-600 p-1"
+                      title="Eliminar Edificio"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
                   <p className="text-slate-500 text-[11px]">{edif.descripcion}</p>
 
                   <div className="pt-2 border-t border-slate-200">
-                    <span className="font-bold text-slate-700 block mb-1">
+                    <span className="font-bold text-slate-700 block mb-1 text-[11px]">
                       Aulas y Laboratorios ({edif.aulas?.length || 0}):
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {edif.aulas?.map((a, i) => (
                         <span
                           key={i}
-                          className="px-2 py-0.5 bg-white text-slate-700 rounded border border-slate-200 text-[10px] font-semibold"
+                          className="px-2 py-0.5 bg-white text-slate-700 rounded border border-slate-200 text-[10px] font-mono font-medium"
                         >
                           {a.codigo} - {a.nombre}
                         </span>
@@ -432,48 +453,48 @@ export default function AdminDashboard({
 
       {/* Modal Nuevo/Editar Usuario */}
       {showUserModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-sm text-slate-900">
-                {editingUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-2xl border border-slate-300 overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+                {editingUser ? 'Editar Registro de Usuario' : 'Registrar Nuevo Usuario'}
               </h3>
-              <button onClick={() => setShowUserModal(false)}>
-                <X className="w-4 h-4 text-slate-400" />
+              <button onClick={() => setShowUserModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveUser} className="p-5 space-y-3 text-xs">
+            <form onSubmit={handleSaveUser} className="p-4 space-y-3 text-xs">
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Nombre Completo *</label>
+                <label className="block text-slate-600 font-medium mb-1">Nombre Completo *</label>
                 <input
                   type="text"
                   required
                   value={userFormData.nombre}
                   onChange={(e) => setUserFormData({ ...userFormData, nombre: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                 />
               </div>
 
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Correo Institucional *</label>
+                <label className="block text-slate-600 font-medium mb-1">Correo Institucional *</label>
                 <input
                   type="email"
                   required
                   disabled={!!editingUser}
                   value={userFormData.email}
                   onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 disabled:bg-slate-100"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono focus:border-slate-900 disabled:bg-slate-100"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Rol RBAC *</label>
+                  <label className="block text-slate-600 font-medium mb-1">Rol RBAC *</label>
                   <select
                     value={userFormData.rol}
                     onChange={(e) => setUserFormData({ ...userFormData, rol: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-bold"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold focus:border-slate-900"
                   >
                     <option value="reportante">Reportante</option>
                     <option value="tecnico">Técnico</option>
@@ -484,11 +505,11 @@ export default function AdminDashboard({
                 </div>
 
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Área Técnica</label>
+                  <label className="block text-slate-600 font-medium mb-1">Área Técnica</label>
                   <select
                     value={userFormData.area}
                     onChange={(e) => setUserFormData({ ...userFormData, area: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   >
                     <option value="general">General</option>
                     <option value="computo_telecomunicaciones">Cómputo & Redes</option>
@@ -499,28 +520,28 @@ export default function AdminDashboard({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Cargo / Departamento</label>
+                <label className="block text-slate-600 font-medium mb-1">Cargo / Departamento</label>
                 <input
                   type="text"
                   value={userFormData.cargo}
                   onChange={(e) => setUserFormData({ ...userFormData, cargo: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowUserModal(false)}
-                  className="px-3 py-1.5 text-slate-600 font-semibold"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold"
+                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold"
                 >
-                  Guardar
+                  Guardar Usuario
                 </button>
               </div>
             </form>
@@ -530,73 +551,73 @@ export default function AdminDashboard({
 
       {/* Modal Nuevo Edificio */}
       {showEdificioModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-sm text-slate-900">Registrar Edificio</h3>
-              <button onClick={() => setShowEdificioModal(false)}>
-                <X className="w-4 h-4 text-slate-400" />
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-lg shadow-2xl border border-slate-300 overflow-hidden">
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-900">Registrar Edificio</h3>
+              <button onClick={() => setShowEdificioModal(false)} className="text-slate-400 hover:text-slate-700">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdificio} className="p-5 space-y-3 text-xs">
+            <form onSubmit={handleSaveEdificio} className="p-4 space-y-3 text-xs">
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-slate-600 font-semibold mb-1">Código *</label>
+                  <label className="block text-slate-600 font-medium mb-1">Código *</label>
                   <input
                     type="text"
                     required
                     placeholder="EDIF-E"
                     value={edificioFormData.codigo}
                     onChange={(e) => setEdificioFormData({ ...edificioFormData, codigo: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 font-mono"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 font-mono text-xs focus:border-slate-900"
                   />
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-slate-600 font-semibold mb-1">Nombre *</label>
+                  <label className="block text-slate-600 font-medium mb-1">Nombre *</label>
                   <input
                     type="text"
                     required
                     placeholder="Edificio E - Posgrado"
                     value={edificioFormData.nombre}
                     onChange={(e) => setEdificioFormData({ ...edificioFormData, nombre: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-600 font-semibold mb-1">Responsable</label>
+                <label className="block text-slate-600 font-medium mb-1">Responsable</label>
                 <input
                   type="text"
                   value={edificioFormData.responsable}
                   onChange={(e) => setEdificioFormData({ ...edificioFormData, responsable: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300"
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
                 />
               </div>
 
               {/* Agregar Aulas */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <span className="font-bold text-slate-700 block">Aulas / Laboratorios a vincular:</span>
+              <div className="p-3 bg-slate-50 rounded-md border border-slate-200 space-y-2">
+                <span className="font-semibold text-slate-700 block text-[11px]">Aulas / Laboratorios a vincular:</span>
                 <div className="flex gap-2">
                   <input
                     type="text"
                     placeholder="Cod (E-101)"
                     value={edificioFormData.nuevaAulaCodigo}
                     onChange={(e) => setEdificioFormData({ ...edificioFormData, nuevaAulaCodigo: e.target.value })}
-                    className="w-24 px-2 py-1 border rounded text-[11px]"
+                    className="w-24 px-2 py-1 border border-slate-300 rounded text-xs font-mono"
                   />
                   <input
                     type="text"
                     placeholder="Nombre Aula"
                     value={edificioFormData.nuevaAulaNombre}
                     onChange={(e) => setEdificioFormData({ ...edificioFormData, nuevaAulaNombre: e.target.value })}
-                    className="flex-1 px-2 py-1 border rounded text-[11px]"
+                    className="flex-1 px-2 py-1 border border-slate-300 rounded text-xs"
                   />
                   <button
                     type="button"
                     onClick={handleAddAulaToList}
-                    className="px-3 py-1 bg-blue-600 text-white rounded text-[11px] font-bold"
+                    className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-xs font-bold"
                   >
                     +
                   </button>
@@ -604,24 +625,24 @@ export default function AdminDashboard({
 
                 <div className="flex flex-wrap gap-1">
                   {edificioFormData.aulas.map((a, i) => (
-                    <span key={i} className="px-2 py-0.5 bg-white border rounded text-[10px]">
+                    <span key={i} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono">
                       {a.codigo} ({a.nombre})
                     </span>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setShowEdificioModal(false)}
-                  className="px-3 py-1.5 text-slate-600 font-semibold"
+                  className="px-3 py-1.5 text-slate-600 hover:text-slate-900 font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold"
+                  className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-md font-semibold"
                 >
                   Guardar Edificio
                 </button>

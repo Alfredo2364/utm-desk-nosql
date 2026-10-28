@@ -21,11 +21,12 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
   const [successMsg, setSuccessMsg] = useState(null);
   const fileInputRef = useRef(null);
 
-  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 Megabytes
+  const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 Megabytes (optimizado con Sharp en backend)
   const ALLOWED_MIME_TYPES = [
     'image/jpeg',
     'image/png',
     'image/jpg',
+    'image/webp',
     'application/pdf',
   ];
 
@@ -37,7 +38,7 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
 
     if (!ALLOWED_MIME_TYPES.includes(file.type)) {
       setErrorMsg(
-        'Formato no válido. Solo se admiten imágenes JPG, PNG y documentos PDF.'
+        'Formato no válido. Solo se admiten imágenes JPG, PNG, WEBP y documentos PDF.'
       );
       return false;
     }
@@ -45,7 +46,7 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
     if (file.size > MAX_FILE_SIZE) {
       const mbSize = (file.size / (1024 * 1024)).toFixed(2);
       setErrorMsg(
-        `El archivo (${mbSize} MB) supera el límite máximo permitido de 5 MB.`
+        `El archivo (${mbSize} MB) supera el límite máximo permitido de 15 MB.`
       );
       return false;
     }
@@ -98,7 +99,14 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
         subidoPor.trim() || 'Técnico Campus'
       );
 
-      setSuccessMsg('¡Archivo subido exitosamente a Supabase Storage y vinculado en MongoDB!');
+      const ahorro = result.evidencia?.ahorro_compresion;
+      if (ahorro && ahorro !== '0%') {
+        setSuccessMsg(
+          `¡Evidencia optimizada y vinculada! Compresión HD activa (Ahorro del ${ahorro} sin pérdida de nitidez).`
+        );
+      } else {
+        setSuccessMsg('Archivo subido exitosamente a Supabase Storage y vinculado en MongoDB Atlas.');
+      }
       setSelectedFile(null);
       setSubidoPor('');
       if (fileInputRef.current) {
@@ -123,25 +131,30 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+    <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs">
+      <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-slate-100">
         <div className="flex items-center space-x-2">
-          <UploadCloud className="w-5 h-5 text-teal-600" />
-          <h3 className="font-bold text-slate-900 text-base">
-            Adjuntar Evidencia Fotográfica o Documental
+          <UploadCloud className="w-4 h-4 text-slate-700" />
+          <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+            Zona de Carga de Evidencias (Supabase Storage)
           </h3>
         </div>
-        <span className="text-[11px] text-slate-500 font-medium">
-          Límite 5MB • JPG, PNG o PDF
-        </span>
+        <div className="flex items-center space-x-2">
+          <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-semibold">
+            ⚡ Sharp HD Activo
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">
+            MAX 15MB • JPG, PNG, WEBP, PDF
+          </span>
+        </div>
       </div>
 
       {/* Alerta de Error */}
       {errorMsg && (
-        <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start space-x-2 text-rose-700 text-xs animate-shake">
+        <div className="mb-3 p-2.5 bg-rose-50 border border-rose-200 rounded-md flex items-start space-x-2 text-rose-700 text-xs">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div className="flex-1">
-            <span className="font-semibold">Error de validación: </span>
+            <span className="font-semibold">Error: </span>
             {errorMsg}
           </div>
           <button
@@ -155,7 +168,7 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
 
       {/* Alerta de Éxito */}
       {successMsg && (
-        <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center space-x-2 text-emerald-800 text-xs">
+        <div className="mb-3 p-2.5 bg-emerald-50 border border-emerald-200 rounded-md flex items-center space-x-2 text-emerald-800 text-xs">
           <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600" />
           <span className="font-medium">{successMsg}</span>
         </div>
@@ -167,10 +180,10 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onClick={() => fileInputRef.current?.click()}
-        className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+        className={`relative border-2 border-dashed rounded-lg p-5 text-center cursor-pointer transition-all ${
           isDragging
-            ? 'border-teal-500 bg-teal-50/70 scale-[1.01]'
-            : 'border-slate-300 hover:border-teal-400 hover:bg-slate-50/60 bg-slate-50/30'
+            ? 'border-slate-800 bg-slate-50'
+            : 'border-slate-300 hover:border-slate-500 bg-slate-50/50'
         }`}
       >
         <input
@@ -181,45 +194,37 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
           className="hidden"
         />
 
-        <div className="flex flex-col items-center justify-center space-y-2">
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
-              isDragging ? 'bg-teal-600 text-white scale-110' : 'bg-teal-100 text-teal-700'
-            }`}
-          >
-            <UploadCloud className="w-6 h-6" />
-          </div>
-
+        <div className="flex flex-col items-center justify-center space-y-1.5">
+          <UploadCloud className="w-6 h-6 text-slate-500" />
           <div className="text-xs">
-            <span className="font-bold text-slate-800">
-              Arrastra y suelta tu archivo aquí
+            <span className="font-semibold text-slate-800">
+              Arrastra un archivo aquí
             </span>{' '}
-            o <span className="text-teal-600 font-semibold underline">haz clic para examinar</span>
+            o <span className="text-slate-900 underline font-semibold">examina tu equipo</span>
           </div>
-
           <p className="text-[11px] text-slate-400">
-            Imágenes de fallas (.jpg, .png) o reportes técnicos escaneados (.pdf) hasta 5 MB
+            Fotografías (.jpg, .png) o reportes técnicos escaneados (.pdf) hasta 5 MB
           </p>
         </div>
       </div>
 
       {/* Archivo Seleccionado y Acciones */}
       {selectedFile && (
-        <div className="mt-4 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+        <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-md space-y-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3 overflow-hidden">
-              <div className="p-2 bg-white rounded-lg border border-slate-200 text-teal-600">
+            <div className="flex items-center space-x-2.5 overflow-hidden text-xs">
+              <div className="p-1.5 bg-white rounded border border-slate-200 text-slate-700">
                 {selectedFile.type === 'application/pdf' ? (
-                  <FileText className="w-5 h-5 text-rose-600" />
+                  <FileText className="w-4 h-4 text-slate-700" />
                 ) : (
-                  <Image className="w-5 h-5 text-teal-600" />
+                  <Image className="w-4 h-4 text-slate-700" />
                 )}
               </div>
-              <div className="overflow-hidden text-xs">
+              <div className="overflow-hidden">
                 <span className="font-semibold text-slate-900 truncate block">
                   {selectedFile.name}
                 </span>
-                <span className="text-[11px] text-slate-500 font-mono">
+                <span className="text-[10px] font-mono text-slate-500">
                   {formatSize(selectedFile.size)} • {selectedFile.type}
                 </span>
               </div>
@@ -231,9 +236,9 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
                 if (fileInputRef.current) fileInputRef.current.value = '';
               }}
               disabled={isUploading}
-              className="p-1 text-slate-400 hover:text-rose-600 rounded-md transition-colors"
+              className="p-1 text-slate-400 hover:text-slate-700 rounded"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
@@ -245,19 +250,19 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
                 value={subidoPor}
                 onChange={(e) => setSubidoPor(e.target.value)}
                 disabled={isUploading}
-                className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
               />
             </div>
 
             <button
               onClick={handleUpload}
               disabled={isUploading}
-              className="w-full inline-flex items-center justify-center space-x-1.5 px-4 py-1.5 font-semibold text-white bg-teal-600 hover:bg-teal-700 active:bg-teal-800 rounded-lg shadow-sm shadow-teal-600/30 transition-all disabled:opacity-50 text-xs"
+              className="w-full inline-flex items-center justify-center space-x-1.5 px-3 py-1.5 font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-md shadow-xs disabled:opacity-50 text-xs transition-colors"
             >
               {isUploading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>Subiendo a Supabase...</span>
+                  <span>Subiendo...</span>
                 </>
               ) : (
                 <>

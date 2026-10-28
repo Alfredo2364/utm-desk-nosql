@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  BarChart3,
   TrendingUp,
   Clock,
   AlertTriangle,
-  Building,
-  CheckCircle2,
-  PieChart,
+  Building2,
   Flame,
   Loader2,
   RefreshCw,
-  Shield,
   Layers,
+  Download,
+  Printer,
+  FileSpreadsheet,
 } from 'lucide-react';
 import {
   getMetricasAnalitica,
@@ -27,6 +26,7 @@ export default function DirectivoDashboard() {
   const [aulasCronicas, setAulasCronicas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [reportMsg, setReportMsg] = useState(null);
 
   const fetchAnalitica = async () => {
     setLoading(true);
@@ -40,7 +40,7 @@ export default function DirectivoDashboard() {
 
       setMetricas(resMetricas);
       setMttrData(resMttr);
-      setAulasCronicas(resAulas.aulasCronicas || []);
+      setAulasCronicas(resAulas.aulasCronicas || resAulas.fallasCronicas || []);
     } catch (err) {
       setError(err.message || 'Error al obtener datos de analítica');
     } finally {
@@ -52,12 +52,58 @@ export default function DirectivoDashboard() {
     fetchAnalitica();
   }, []);
 
+  const handleExportCSV = () => {
+    const kpis = metricas?.kpis || {};
+    const porEdificio = mttrData?.porEdificio || [];
+    let csv = 'REPORTE EJECUTIVO DE ANALITICA - UTM DESK NOSQL CLOUD\n';
+    csv += `Generado por:,${currentUser?.nombre || 'Directivo UTM'} (${currentUser?.email || ''})\n`;
+    csv += `Fecha:,${new Date().toLocaleString('es-MX')}\n\n`;
+    csv += '1. METRICAS GENERALES\n';
+    csv += `Total Incidencias,${kpis.total || 0}\n`;
+    csv += `Abiertas,${kpis.abiertas || 0}\n`;
+    csv += `En Proceso,${kpis.enProgreso || 0}\n`;
+    csv += `Resueltas,${(kpis.resueltas || 0) + (kpis.cerradas || 0)}\n`;
+    csv += `Tasa de Resolucion (%),${kpis.tasaResolucion || 0}%\n`;
+    csv += `MTTR Global (Minutos),${mttrData?.mttrMinutos || 0}\n`;
+    csv += `MTTR Global (Horas),${mttrData?.mttrHoras || 0}\n\n`;
+
+    csv += '2. RF-07 TIEMPO MEDIO DE RESOLUCION POR EDIFICIO ($match resueltas -> $group edificio -> $avg tiempoResolucionMin)\n';
+    csv += 'Clave Edificio,Nombre Edificio,Promedio (Minutos),Promedio (Horas),Total Resueltas\n';
+    porEdificio.forEach((ed) => {
+      csv += `"${ed.edificioId || ''}","${ed.edificio || ''}",${ed.tiempoPromedioMin || 0},${ed.tiempoPromedioHoras || 0},${ed.totalResueltas || 0}\n`;
+    });
+
+    csv += '\n3. RF-08 RANKING DE AULAS CON FALLAS CRONICAS ($group edificio y aula -> $sort conteo -> $limit)\n';
+    csv += 'Edificio,Aula / Laboratorio,Total Incidencias,Criticas,Abiertas,Resueltas\n';
+    aulasCronicas.forEach((a) => {
+      csv += `"${a.edificio || a.edificioId}","${a.aula_laboratorio || a.aula}",${a.totalIncidencias},${a.criticas},${a.abiertas},${a.resueltas}\n`;
+    });
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute(
+      'download',
+      `Reporte_Directivo_UTM_Desk_${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setReportMsg('Reporte CSV descargado exitosamente.');
+    setTimeout(() => setReportMsg(null), 4000);
+  };
+
+  const handlePrintReport = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-slate-500 space-y-3">
-        <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
-        <span className="text-xs font-bold uppercase tracking-wider">
-          Generando métricas y análisis de MTTR en MongoDB Atlas...
+        <Loader2 className="w-8 h-8 animate-spin text-slate-700" />
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+          Ejecutando Aggregation Pipelines (RF-07 y RF-08) en MongoDB Atlas...
         </span>
       </div>
     );
@@ -65,253 +111,281 @@ export default function DirectivoDashboard() {
 
   if (error) {
     return (
-      <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-3 text-rose-800 text-sm">
-        <AlertTriangle className="w-8 h-8 text-rose-600 mx-auto" />
-        <p className="font-bold">{error}</p>
+      <div className="p-6 bg-rose-50 border border-rose-200 rounded-lg text-center space-y-3 text-rose-800 text-xs">
+        <AlertTriangle className="w-6 h-6 text-rose-600 mx-auto" />
+        <p className="font-semibold">{error}</p>
         <button
           onClick={fetchAnalitica}
-          className="px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-lg"
+          className="px-3.5 py-1.5 bg-rose-600 text-white text-xs font-semibold rounded-md hover:bg-rose-700 cursor-pointer"
         >
-          Reintentar Carga de Analítica
+          Reintentar Consulta
         </button>
       </div>
     );
   }
 
   const kpis = metricas?.kpis || {};
+  const porEdificio = mttrData?.porEdificio || [];
 
   return (
-    <div className="space-y-6 animate-fadeIn text-slate-800">
-      {/* Header Directivo */}
-      <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-2xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div className="space-y-4 animate-fadeIn text-slate-800">
+      {/* Header Directivo (Tabla 3 y 4) */}
+      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
         <div>
-          <div className="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 text-xs font-semibold mb-2 border border-purple-400/30">
-            <Shield className="w-3.5 h-3.5 text-purple-300" />
-            <span>Perfil: Órgano Directivo / Solo Lectura</span>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-base font-bold text-slate-900 tracking-tight">
+              Portal Ejecutivo Directivo • Analítica y Generación de Reportes
+            </h1>
+            <span className="font-mono text-[10px] bg-purple-50 text-purple-800 px-2 py-0.5 rounded font-bold uppercase border border-purple-200">
+              ROL: DIRECTIVO (TABLA 3 Y 4)
+            </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black">
-            Tablero de Inteligencia y Analítica Campus
-          </h2>
-          <p className="text-xs sm:text-sm text-purple-200 mt-1 max-w-2xl">
-            Monitoreo gerencial de eficiencia operativa, MTTR y detección temprana de infraestructura con fallas crónicas.
+          <p className="text-xs text-slate-500 mt-0.5">
+            Consulta exclusiva de métricas, tiempo medio de atención por edificio (`RF-07`) y aulas con fallas crónicas (`RF-08`).
           </p>
         </div>
 
-        <button
-          onClick={fetchAnalitica}
-          className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl bg-purple-800/60 hover:bg-purple-800 text-white font-semibold text-xs border border-purple-400/40"
-        >
-          <RefreshCw className="w-4 h-4" />
-          <span>Actualizar Indicadores</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <span>Generar Reporte CSV</span>
+          </button>
+
+          <button
+            onClick={handlePrintReport}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>Imprimir / PDF</span>
+          </button>
+
+          <button
+            onClick={fetchAnalitica}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs border border-slate-300 transition-colors cursor-pointer"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Actualizar</span>
+          </button>
+        </div>
       </div>
 
-      {/* 1. Tarjetas de Métricas Ejecutivas (KPIs) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Volumen Histórico
+      {reportMsg && (
+        <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs font-semibold flex items-center justify-between">
+          <span>✅ {reportMsg}</span>
+        </div>
+      )}
+
+      {/* 1. KPIs Ribbon */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              Volumen Total
             </span>
-            <div className="p-2 bg-purple-50 text-purple-700 rounded-xl">
-              <Layers className="w-5 h-5" />
-            </div>
+            <Layers className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="text-3xl font-black text-slate-900">{kpis.total}</div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            {kpis.abiertas} abiertas • {kpis.enProgreso} en atención
+          <div className="text-2xl font-black text-slate-900 font-mono">{kpis.total}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {kpis.abiertas} abiertas • {kpis.enProgreso} en proceso
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+        <div className="bg-white p-4 rounded-lg border border-emerald-100 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">
               Tasa de Resolución
             </span>
-            <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
-              <TrendingUp className="w-5 h-5" />
-            </div>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-3xl font-black text-emerald-600">
+          <div className="text-2xl font-black text-emerald-700 font-mono">
             {kpis.tasaResolucion}%
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            {kpis.resueltas + kpis.cerradas} incidencias resueltas con éxito
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {(kpis.resueltas || 0) + (kpis.cerradas || 0)} incidencias solucionadas
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Fallas Críticas Activas
+        <div className="bg-white p-4 rounded-lg border border-rose-100 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider">
+              Fallas Críticas
             </span>
-            <div className="p-2 bg-rose-50 text-rose-700 rounded-xl">
-              <Flame className="w-5 h-5 animate-pulse" />
-            </div>
+            <Flame className="w-4 h-4 text-rose-500" />
           </div>
-          <div className="text-3xl font-black text-rose-600">{kpis.criticas}</div>
-          <div className="text-[11px] text-rose-700/80 mt-1 font-semibold">
-            Requieren atención prioritaria
+          <div className="text-2xl font-black text-rose-600 font-mono">{kpis.criticas}</div>
+          <div className="text-[11px] text-rose-700/80 mt-0.5 font-medium">
+            Prioridad máxima de atención
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-              Puntos Crónicos Detectados
+        <div className="bg-white p-4 rounded-lg border border-amber-100 shadow-xs">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">
+              Aulas Monitorizadas
             </span>
-            <div className="p-2 bg-amber-50 text-amber-700 rounded-xl">
-              <Building className="w-5 h-5" />
-            </div>
+            <Building2 className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-3xl font-black text-amber-600">
+          <div className="text-2xl font-black text-amber-600 font-mono">
             {aulasCronicas.length}
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">
-            Espacios con reincidencia &gt; 1 falla
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            Espacios en ranking RF-08
           </div>
         </div>
       </div>
 
-      {/* 2. Sección de MTTR (Mean Time to Resolution) */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-6 pb-4 border-b border-slate-100">
+      {/* 2. RF-07: Tiempo Medio de Resolución por Edificio y Categoría */}
+      <div className="bg-white rounded-lg border border-slate-200 p-4 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
-            <div className="flex items-center space-x-2">
-              <Clock className="w-5 h-5 text-indigo-600" />
-              <h3 className="font-extrabold text-slate-900 text-lg">
-                Tiempo Medio de Resolución (MTTR)
+            <div className="flex items-center space-x-1.5">
+              <Clock className="w-4 h-4 text-slate-700" />
+              <h3 className="font-bold text-slate-900 text-sm">
+                RF-07: Tiempo Medio de Resolución (`GET /api/analitica/tiempo-medio`)
               </h3>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Tiempo promedio transcurrido entre la creación del ticket y su resolución por parte de los técnicos
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Aggregation Pipeline en MongoDB Atlas: `$match` de resueltas, `$group` por edificio y `$avg` de `tiempoResolucionMin`.
             </p>
           </div>
-          <div className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-200">
-            {mttrData?.totalCasosAnalizados || 0} tickets resueltos evaluados
-          </div>
+          <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[11px] font-mono font-semibold border border-slate-200">
+            {mttrData?.totalCasosAnalizados || 0} resueltas analizadas
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
           {/* Promedio General */}
-          <div className="bg-gradient-to-br from-indigo-50 to-blue-50/50 p-6 rounded-2xl border border-indigo-100 text-center space-y-2">
-            <span className="text-xs font-bold text-indigo-900 uppercase tracking-wider">
-              MTTR Promedio Global
+          <div className="lg:col-span-4 bg-slate-50 p-4 rounded-lg border border-slate-200 text-center space-y-1.5">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+              Tiempo Medio Global
             </span>
-            <div className="text-4xl font-black text-indigo-700">
-              {mttrData?.mttrHoras || 0} <span className="text-lg font-bold">Horas</span>
+            <div className="text-3xl font-black text-slate-900 font-mono">
+              {mttrData?.mttrMinutos || 0}{' '}
+              <span className="text-sm font-bold text-slate-500">min</span>
             </div>
-            <div className="text-xs text-indigo-600 font-semibold">
-              Equivalente a {(mttrData?.mttrDias || 0)} días promedio
+            <div className="text-xs text-emerald-700 font-bold font-mono">
+              Equivalente a {mttrData?.mttrHoras || 0} Horas (~{mttrData?.mttrDias || 0} días)
             </div>
           </div>
 
-          {/* Desglose por Categoría */}
-          <div className="md:col-span-2 space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              MTTR por Departamento Operativo:
+          {/* Tabla RF-07 Por Edificio */}
+          <div className="lg:col-span-8">
+            <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Promedio Calculado por Edificio en MongoDB Atlas (`porEdificio`):
             </h4>
-
-            {mttrData?.mttrPorCategoria && Object.keys(mttrData.mttrPorCategoria).length > 0 ? (
-              <div className="space-y-3">
-                {Object.entries(mttrData.mttrPorCategoria).map(([cat, data]) => (
-                  <div key={cat} className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                    <div className="flex justify-between items-center text-xs mb-1.5">
-                      <span className="font-bold text-slate-800 capitalize">
-                        {cat.replace('_', ' ')}
-                      </span>
-                      <span className="font-bold text-indigo-700 font-mono">
-                        {data.horasPromedio} hrs ({data.totalResueltas} casos)
-                      </span>
-                    </div>
-                    {/* Barra de progreso visual */}
-                    <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                      <div
-                        className="bg-indigo-600 h-2 rounded-full"
-                        style={{
-                          width: `${Math.min(100, (data.horasPromedio / 48) * 100)}%`,
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                ))}
+            {porEdificio.length > 0 ? (
+              <div className="overflow-x-auto border border-slate-200 rounded-md">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Clave Edificio</th>
+                      <th className="px-3 py-2">Nombre del Edificio</th>
+                      <th className="px-3 py-2">Promedio (`tiempoResolucionMin`)</th>
+                      <th className="px-3 py-2">En Horas</th>
+                      <th className="px-3 py-2 text-right">Casos Resueltos</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {porEdificio.map((ed, i) => (
+                      <tr key={ed.edificioId || i} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 font-mono font-bold text-slate-900">
+                          {ed.edificioId}
+                        </td>
+                        <td className="px-3 py-2 text-slate-700">{ed.edificio}</td>
+                        <td className="px-3 py-2 font-mono font-bold text-emerald-700">
+                          {ed.tiempoPromedioMin} min
+                        </td>
+                        <td className="px-3 py-2 font-mono text-slate-600">
+                          {ed.tiempoPromedioHoras} hrs
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono font-semibold">
+                          {ed.totalResueltas}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="text-slate-400 text-xs italic py-4">
-                No hay suficientes datos de resolución por categoría aún.
+              <div className="text-slate-400 text-xs italic py-2">
+                Sin incidencias resueltas aún para agrupar por edificio.
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* 3. Tabla Analítica: Aulas y Espacios con Fallas Crónicas */}
-      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between">
+      {/* 3. RF-08: Aulas con Fallas Crónicas */}
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-xs">
+        <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
           <div>
-            <div className="flex items-center space-x-2">
-              <Building className="w-5 h-5 text-amber-600" />
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Aulas y Espacios con Fallas Crónicas
+            <div className="flex items-center space-x-1.5">
+              <Building2 className="w-4 h-4 text-slate-700" />
+              <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                RF-08: Aulas y Laboratorios con Fallas Crónicas (`GET /api/analitica/fallas-cronicas`)
               </h3>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Áreas del campus con mayor reincidencia de incidencias para priorizar mantenimiento preventivo
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Aggregation Pipeline: `$group` por edificio y aula, `$sort` por conteo de mayor a menor y `$limit`.
             </p>
           </div>
-          <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-            Pipeline de Agregación NoSQL
-          </span>
         </div>
 
         <div className="overflow-x-auto text-xs">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider text-[10px] font-bold border-b border-slate-200">
+            <thead className="bg-white border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-bold">
               <tr>
-                <th className="px-4 py-3">Edificio</th>
-                <th className="px-4 py-3">Aula / Laboratorio</th>
-                <th className="px-4 py-3 text-center">Total Incidencias</th>
-                <th className="px-4 py-3 text-center">Fallas Críticas</th>
-                <th className="px-4 py-3 text-center">Resueltas</th>
-                <th className="px-4 py-3">Categorías Afectadas</th>
+                <th className="px-4 py-2.5">#</th>
+                <th className="px-4 py-2.5">Edificio (`edificioId`)</th>
+                <th className="px-4 py-2.5">Aula / Laboratorio (`aula`)</th>
+                <th className="px-4 py-2.5">Total Reportes</th>
+                <th className="px-4 py-2.5">Críticas</th>
+                <th className="px-4 py-2.5">Abiertas / Resueltas</th>
+                <th className="px-4 py-2.5">Categorías Detectadas</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {aulasCronicas.map((aula, idx) => (
+              {aulasCronicas.map((item, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                  <td className="px-4 py-3.5 font-bold text-slate-900">
-                    {aula.edificio}
+                  <td className="px-4 py-3 font-mono font-bold text-slate-400">
+                    #{idx + 1}
                   </td>
-                  <td className="px-4 py-3.5 font-semibold text-slate-700">
-                    {aula.aula_laboratorio}
+                  <td className="px-4 py-3 font-semibold text-slate-900">
+                    {item.edificio}
                   </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="px-2.5 py-1 bg-amber-100 text-amber-900 font-extrabold rounded-lg">
-                      {aula.totalIncidencias}
+                  <td className="px-4 py-3 font-mono font-bold text-slate-800">
+                    {item.aula_laboratorio || item.aula}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-0.5 bg-slate-900 text-white rounded font-mono font-bold text-xs">
+                      {item.totalIncidencias}
                     </span>
                   </td>
-                  <td className="px-4 py-3.5 text-center">
-                    {aula.criticas > 0 ? (
-                      <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-bold rounded">
-                        {aula.criticas}
+                  <td className="px-4 py-3">
+                    {item.criticas > 0 ? (
+                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded font-mono font-bold text-[11px]">
+                        {item.criticas} críticas
                       </span>
                     ) : (
-                      <span className="text-slate-400">0</span>
+                      <span className="text-slate-400 font-mono">0</span>
                     )}
                   </td>
-                  <td className="px-4 py-3.5 text-center">
-                    <span className="text-emerald-700 font-bold">
-                      {aula.resueltas} / {aula.totalIncidencias}
-                    </span>
+                  <td className="px-4 py-3 font-mono text-[11px]">
+                    <span className="text-amber-700 font-semibold">{item.abiertas} abiertas</span>
+                    {' / '}
+                    <span className="text-emerald-700 font-semibold">{item.resueltas} resueltas</span>
                   </td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
-                      {aula.categorias?.map((c) => (
+                      {(item.categorias || []).map((c) => (
                         <span
                           key={c}
-                          className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200 capitalize"
+                          className="px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded text-[10px] capitalize border border-slate-200"
                         >
-                          {c.replace('_', ' ')}
+                          {c?.replace('_', ' ')}
                         </span>
                       ))}
                     </div>

@@ -1,5 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const Incidencia = require('../models/Incidencia');
 const Usuario = require('../models/Usuario');
 const Edificio = require('../models/Edificio');
@@ -7,118 +8,146 @@ const connectDB = require('../config/db');
 
 const demoUsuarios = [
   {
-    nombre: 'Alumno Daniel García',
-    email: 'alumno.garcia@utm.mx',
-    rol: 'reportante',
-    area: 'general',
-    cargo: 'Estudiante de Ing. en Computación',
-    departamento_carrera: 'Ingeniería en Computación',
-    activo: true,
-  },
-  {
-    nombre: 'Ing. Roberto Méndez',
-    email: 'tecnico.redes@utm.mx',
-    rol: 'tecnico',
-    area: 'computo_telecomunicaciones',
-    cargo: 'Especialista en Redes y Telecomunicaciones',
-    id_tecnico: 'TEC-UTM-092',
-    departamento_carrera: 'Infraestructura Tecnológica',
-    activo: true,
-  },
-  {
-    nombre: 'Téc. Marco Peña',
-    email: 'tecnico.infra@utm.mx',
-    rol: 'tecnico',
-    area: 'infraestructura_mantenimiento',
-    cargo: 'Técnico de Mantenimiento e Instalaciones',
-    id_tecnico: 'TEC-UTM-018',
-    departamento_carrera: 'Mantenimiento General',
-    activo: true,
-  },
-  {
-    nombre: 'Ing. Daniela Soto',
-    email: 'tecnico.sistemas@utm.mx',
-    rol: 'tecnico',
-    area: 'sistemas_servicios_academicos',
-    cargo: 'Ingeniera de Plataformas Web y SICE',
-    id_tecnico: 'TEC-UTM-045',
-    departamento_carrera: 'Servicios de Cómputo Académico',
-    activo: true,
-  },
-  {
-    nombre: 'Ing. Carlos Mendoza',
-    email: 'supervisor.campus@utm.mx',
-    rol: 'supervisor',
-    area: 'general',
-    cargo: 'Supervisor General de Operaciones de Campus',
-    departamento_carrera: 'Coordinación de Operaciones',
-    activo: true,
-  },
-  {
-    nombre: 'Dra. Patricia Arango',
-    email: 'directora.academica@utm.mx',
-    rol: 'directivo',
-    area: 'general',
-    cargo: 'Directora de División y Planeación Universitaria',
-    departamento_carrera: 'Dirección Académica',
+    nombre: 'Super Administrador General UTM',
+    email: 'superadmin@utm.mx',
+    correo: 'superadmin@utm.mx',
+    passwordPlain: 'superutm2026',
+    rol: 'superadmin',
+    area: null,
+    cargo: 'Super Administrador General — Control Total y Ejecución Global',
+    departamento_carrera: 'Dirección General de TI y Nube',
     activo: true,
   },
   {
     nombre: 'Administrador Maestro UTM',
     email: 'admin.sistemas@utm.mx',
+    correo: 'admin.sistemas@utm.mx',
+    passwordPlain: 'utm123456',
     rol: 'admin',
-    area: 'general',
-    cargo: 'Administrador General del Sistema NoSQL',
+    area: null,
+    cargo: 'Administrador de Usuarios y Catálogos (Tabla 3)',
     departamento_carrera: 'Tecnologías de la Información',
+    activo: true,
+  },
+  {
+    nombre: 'Dra. Patricia Arango',
+    email: 'directora.academica@utm.mx',
+    correo: 'directora.academica@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'directivo',
+    area: null,
+    cargo: 'Directivo de la UTM — Analítica y Reportes (Tabla 3)',
+    departamento_carrera: 'Dirección Académica',
+    activo: true,
+  },
+  {
+    nombre: 'Ing. Carlos Mendoza',
+    email: 'supervisor.campus@utm.mx',
+    correo: 'supervisor.campus@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'supervisor',
+    area: null,
+    cargo: 'Supervisor de Gestión y Seguimiento de Tickets (Tabla 3)',
+    departamento_carrera: 'Coordinación de Operaciones',
+    activo: true,
+  },
+  {
+    nombre: 'Luis Hernández Pech (Téc. Cómputo)',
+    email: 'tecnico.redes@utm.mx',
+    correo: 'tecnico.redes@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'tecnico',
+    area: 'computo_telecomunicaciones',
+    cargo: 'Especialista en Cómputo y Telecomunicaciones (Figura 5)',
+    id_tecnico: 'TEC-UTM-092',
+    departamento_carrera: 'Infraestructura Tecnológica',
+    activo: true,
+  },
+  {
+    nombre: 'Téc. Marco Peña (Téc. Infraestructura)',
+    email: 'tecnico.infra@utm.mx',
+    correo: 'tecnico.infra@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'tecnico',
+    area: 'infraestructura_mantenimiento',
+    cargo: 'Técnico de Infraestructura y Mantenimiento Físico',
+    id_tecnico: 'TEC-UTM-018',
+    departamento_carrera: 'Mantenimiento General',
+    activo: true,
+  },
+  {
+    nombre: 'Ing. Daniela Soto (Téc. Sistemas)',
+    email: 'tecnico.sistemas@utm.mx',
+    correo: 'tecnico.sistemas@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'tecnico',
+    area: 'sistemas_servicios_academicos',
+    cargo: 'Ingeniera de Sistemas y Servicios Académicos',
+    id_tecnico: 'TEC-UTM-045',
+    departamento_carrera: 'Servicios de Cómputo Académico',
+    activo: true,
+  },
+  {
+    nombre: 'Alumno Daniel García',
+    email: 'alumno.garcia@utm.mx',
+    correo: 'alumno.garcia@utm.mx',
+    passwordPlain: 'utm123456',
+    rol: 'reportante',
+    area: null,
+    cargo: 'Integrante de la Comunidad Universitaria — Reportante (Tabla 3)',
+    departamento_carrera: 'Ingeniería en Tecnologías de la Información',
     activo: true,
   },
 ];
 
 const demoEdificios = [
   {
-    codigo: 'EDIF-A',
+    clave: 'ED-A',
+    codigo: 'ED-A',
     nombre: 'Edificio A - Tecnologías de la Información',
-    descripcion: 'Aulas de cómputo, laboratorios de redes, desarrollo de software y telecomunicaciones.',
+    descripcion: 'Aulas de cómputo, laboratorios de redes, desarrollo de software y telecomunicaciones (Figura 6).',
     pisos: 3,
     responsable: 'Coordinación de Computación',
     aulas: [
-      { codigo: 'L-01', nombre: 'Laboratorio de Cómputo L-01', tipo: 'laboratorio', piso: 'Piso 1', capacidad: 35 },
+      { codigo: 'A-101', nombre: 'Aula 101', tipo: 'aula', piso: 'Planta Baja', capacidad: 40 },
+      { codigo: 'A-102', nombre: 'Laboratorio de cómputo', tipo: 'laboratorio', piso: 'Planta Baja', capacidad: 35 },
       { codigo: 'L-02', nombre: 'Laboratorio de Redes y Telecomunicaciones L-02', tipo: 'laboratorio', piso: 'Piso 2', capacidad: 30 },
-      { codigo: 'SRV-01', nombre: 'Centro de Datos y Servidores Centrales', tipo: 'taller', piso: 'Piso 1', capacidad: 10 },
     ],
   },
   {
-    codigo: 'EDIF-B',
-    nombre: 'Edificio B - Ciencias Básicas',
-    descripcion: 'Aulas de tronco común, física, matemáticas y química.',
+    clave: 'ED-B',
+    codigo: 'ED-B',
+    nombre: 'Edificio B - Ciencias Básicas y Laboratorios',
+    descripcion: 'Aulas de tronco común, física, matemáticas y laboratorios especializados (Figura 3).',
     pisos: 2,
     responsable: 'Coordinación de Ciencias Básicas',
     aulas: [
       { codigo: 'B-101', nombre: 'Aula Magna B-101', tipo: 'auditorio', piso: 'Planta Baja', capacidad: 120 },
-      { codigo: 'B-201', nombre: 'Aula Teórica B-201', tipo: 'aula', piso: 'Piso 2', capacidad: 45 },
-      { codigo: 'LAB-FIS', nombre: 'Laboratorio de Física Experimental', tipo: 'laboratorio', piso: 'Piso 1', capacidad: 30 },
+      { codigo: 'B-204', nombre: 'Laboratorio B-204', tipo: 'laboratorio', piso: 'Piso 2', capacidad: 35 },
     ],
   },
   {
-    codigo: 'EDIF-D',
-    nombre: 'Edificio D - Aulas Generales',
-    descripcion: 'Aulas inteligentes y talleres de electrónica y mecatrónica.',
+    clave: 'ED-C',
+    codigo: 'ED-C',
+    nombre: 'Edificio C - Servicios Académicos y Control Escolar',
+    descripcion: 'Plataformas académicas, captura de actas, servicios escolares y dirección (Figura 4).',
+    pisos: 2,
+    responsable: 'Secretaría Académica',
+    aulas: [
+      { codigo: 'C-001', nombre: 'Sala de Captura Docente y Control Escolar C-001', tipo: 'aula', piso: 'Planta Baja', capacidad: 25 },
+      { codigo: 'ESC-03', nombre: 'Ventanilla 3 de Control Escolar', tipo: 'oficina_administrativa', piso: 'Piso 1', capacidad: 15 },
+    ],
+  },
+  {
+    clave: 'ED-D',
+    codigo: 'ED-D',
+    nombre: 'Edificio D - Aulas Multimedia e Innovación',
+    descripcion: 'Aulas inteligentes y talleres de innovación digital.',
     pisos: 2,
     responsable: 'Coordinación de Aulas Multimedia',
     aulas: [
       { codigo: 'D-204', nombre: 'Aula Inteligente D-204', tipo: 'aula', piso: 'Piso 2', capacidad: 40 },
       { codigo: 'D-205', nombre: 'Aula de Seminarios D-205', tipo: 'aula', piso: 'Piso 2', capacidad: 35 },
-    ],
-  },
-  {
-    codigo: 'EDIF-CEN',
-    nombre: 'Edificio Central - Rectoría y Control Escolar',
-    descripcion: 'Oficinas directivas, servicios escolares, biblioteca y finanzas.',
-    pisos: 2,
-    responsable: 'Secretaría General',
-    aulas: [
-      { codigo: 'ESC-03', nombre: 'Ventanilla 3 de Control Escolar', tipo: 'oficina_administrativa', piso: 'Piso 1', capacidad: 15 },
-      { codigo: 'DIR-01', nombre: 'Sala de Juntas de Rectoría', tipo: 'oficina_administrativa', piso: 'Piso 2', capacidad: 25 },
     ],
   },
 ];
@@ -464,6 +493,235 @@ const demoIncidencias = [
     ],
     evidencias_adjuntas: [],
   },
+  // === 3 EXPEDIENTES FORMALES DE LAS FIGURAS 2, 3 Y 4 DEL ERS CLOUD ===
+  {
+    codigo: 'INC-2026-0001',
+    titulo: 'Switch de distribución sin respuesta',
+    descripcion: 'Switch del rack principal sin respuesta; planta baja sin red.',
+    categoria: 'computo_telecomunicaciones',
+    prioridad: 'alta',
+    estado: 'en_proceso',
+    ubicacion: {
+      edificioId: 'ED-A',
+      aula: 'A-101',
+      edificio: 'Edificio A - Tecnologías de la Información',
+      aula_laboratorio: 'A-101',
+    },
+    reportante: {
+      nombre: 'Alumno Daniel García',
+      email: 'alumno.garcia@utm.mx',
+      rol: 'reportante',
+      departamento_carrera: 'Ingeniería en Tecnologías de la Información',
+    },
+    tecnico_asignado: {
+      nombre: 'Luis Hernández Pech (Téc. Cómputo)',
+      email: 'tecnico.redes@utm.mx',
+      id_tecnico: 'TEC-UTM-092',
+      area: 'computo_telecomunicaciones',
+      fecha_asignacion: new Date('2026-10-15T14:30:00Z'),
+      asignado_por: 'Ing. Carlos Mendoza (Supervisor)',
+    },
+    fechaReporte: new Date('2026-10-15T14:20:00Z'),
+    fechaResolucion: null,
+    tiempoResolucionMin: null,
+    detalle: {
+      ip: '10.10.1.2',
+      direccion_ip: '10.10.1.2',
+      vlan: 20,
+      segmento_vlan: 'VLAN-20',
+      puertoUplink: 'Gi1/0/48',
+      equiposAfectados: 18,
+      tipo_dispositivo: 'Switch de Distribución Capa 3',
+      marca_modelo: 'Cisco Catalyst 2960-X',
+    },
+    revisiones: [
+      {
+        fecha: new Date('2026-10-15T14:45:00Z'),
+        fecha_revision: new Date('2026-10-15T14:45:00Z'),
+        tecnico: {
+          nombre: 'Luis Hernández Pech (Téc. Cómputo)',
+          id_tecnico: 'TEC-UTM-092',
+          departamento: 'Cómputo y Telecomunicaciones',
+        },
+        comentario: 'Se revisa el enlace de subida del switch.',
+        diagnostico: 'Se revisa el enlace de subida del switch.',
+        estadoAnterior: 'asignada',
+        estado_anterior: 'asignada',
+        estadoNuevo: 'en_proceso',
+        estado_asignado: 'en_proceso',
+      },
+    ],
+    evidencias_adjuntas: [
+      {
+        nombre_archivo: 'switch_rack.jpg',
+        nombre_original: 'switch_rack.jpg',
+        tipo_mime: 'image/jpeg',
+        peso_kb: 412,
+        tamanio_bytes: 421888,
+        tamanio_original_bytes: 1850000,
+        ahorro_compresion: '77.2%',
+        ruta_storage: 'INC-2026-0001/1792076400000_switch_rack.jpg',
+        supabase_path: 'INC-2026-0001/1792076400000_switch_rack.jpg',
+        url_storage: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
+        url_firmada: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
+        url_expira: new Date(Date.now() + 6 * 24 * 3600 * 1000),
+        subido_por: 'Luis Hernández Pech',
+        fecha_carga: new Date('2026-10-15T15:00:00Z'),
+        fecha_subida: new Date('2026-10-15T15:00:00Z'),
+      },
+    ],
+  },
+  {
+    codigo: 'INC-2026-0012',
+    titulo: 'Filtración de agua en el techo del laboratorio',
+    descripcion: 'Goteo constante sobre las mesas de trabajo tras la lluvia.',
+    categoria: 'infraestructura_mantenimiento',
+    prioridad: 'media',
+    estado: 'resuelta',
+    ubicacion: {
+      edificioId: 'ED-B',
+      aula: 'B-204',
+      edificio: 'Edificio B - Ciencias Básicas y Laboratorios',
+      aula_laboratorio: 'B-204',
+    },
+    reportante: {
+      nombre: 'Alumno Daniel García',
+      email: 'alumno.garcia@utm.mx',
+      rol: 'reportante',
+      departamento_carrera: 'Ingeniería en Tecnologías de la Información',
+    },
+    tecnico_asignado: {
+      nombre: 'Téc. Marco Peña (Téc. Infraestructura)',
+      email: 'tecnico.infra@utm.mx',
+      id_tecnico: 'TEC-UTM-018',
+      area: 'infraestructura_mantenimiento',
+      fecha_asignacion: new Date('2026-10-16T09:30:00Z'),
+      asignado_por: 'Ing. Carlos Mendoza (Supervisor)',
+    },
+    fechaReporte: new Date('2026-10-16T09:10:00Z'),
+    fechaResolucion: new Date('2026-10-16T17:40:00Z'),
+    fecha_resolucion: new Date('2026-10-16T17:40:00Z'),
+    tiempoResolucionMin: 510,
+    detalle: {
+      tipoDano: 'filtracion',
+      tipo_servicio: 'filtracion',
+      riesgoSeguridad: true,
+      insumos: ['sellador asfáltico', 'impermeabilizante'],
+      materiales_requeridos: ['sellador asfáltico', 'impermeabilizante'],
+      contratistaExterno: false,
+    },
+    revisiones: [
+      {
+        fecha: new Date('2026-10-16T17:40:00Z'),
+        fecha_revision: new Date('2026-10-16T17:40:00Z'),
+        tecnico: {
+          nombre: 'Téc. Marco Peña (Téc. Infraestructura)',
+          id_tecnico: 'TEC-UTM-018',
+          departamento: 'Infraestructura y Mantenimiento',
+        },
+        comentario: 'Se sella la zona afectada y se verifica sin goteo.',
+        diagnostico: 'Se sella la zona afectada y se verifica sin goteo.',
+        estadoAnterior: 'en_proceso',
+        estado_anterior: 'en_proceso',
+        estadoNuevo: 'resuelta',
+        estado_asignado: 'resuelta',
+      },
+    ],
+    evidencias_adjuntas: [
+      {
+        nombre_archivo: 'filtracion_techo.png',
+        nombre_original: 'filtracion_techo.png',
+        tipo_mime: 'image/png',
+        peso_kb: 530,
+        tamanio_bytes: 542720,
+        tamanio_original_bytes: 2100000,
+        ahorro_compresion: '74.2%',
+        ruta_storage: 'INC-2026-0012/1792163000000_filtracion_techo.png',
+        supabase_path: 'INC-2026-0012/1792163000000_filtracion_techo.png',
+        url_storage: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80',
+        url_firmada: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=1200&q=80',
+        url_expira: new Date(Date.now() + 6 * 24 * 3600 * 1000),
+        subido_por: 'Téc. Marco Peña',
+        fecha_carga: new Date('2026-10-16T15:03:20Z'),
+        fecha_subida: new Date('2026-10-16T15:03:20Z'),
+      },
+    ],
+  },
+  {
+    codigo: 'INC-2026-0020',
+    titulo: 'Error al capturar actas de calificaciones',
+    descripcion: 'La plataforma marca error al guardar las calificaciones.',
+    categoria: 'sistemas_servicios_academicos',
+    prioridad: 'critica',
+    estado: 'asignada',
+    ubicacion: {
+      edificioId: 'ED-C',
+      aula: 'C-001',
+      edificio: 'Edificio C - Servicios Académicos y Control Escolar',
+      aula_laboratorio: 'C-001',
+    },
+    reportante: {
+      nombre: 'Alumno Daniel García',
+      email: 'alumno.garcia@utm.mx',
+      rol: 'reportante',
+      departamento_carrera: 'Ingeniería en Tecnologías de la Información',
+    },
+    tecnico_asignado: {
+      nombre: 'Ing. Daniela Soto (Téc. Sistemas)',
+      email: 'tecnico.sistemas@utm.mx',
+      id_tecnico: 'TEC-UTM-045',
+      area: 'sistemas_servicios_academicos',
+      fecha_asignacion: new Date('2026-10-17T15:30:00Z'),
+      asignado_por: 'Ing. Carlos Mendoza (Supervisor)',
+    },
+    fechaReporte: new Date('2026-10-17T15:00:00Z'),
+    fechaResolucion: null,
+    tiempoResolucionMin: null,
+    detalle: {
+      plataforma: 'Portal de calificaciones',
+      codigoCurso: 'BDN-501',
+      periodoEscolar: '2026-3',
+      estudiantesAfectados: 35,
+      usuarios_afectados: 35,
+      modulo_afectado: 'BDN-501 (2026-3)',
+    },
+    revisiones: [
+      {
+        fecha: new Date('2026-10-17T15:30:00Z'),
+        fecha_revision: new Date('2026-10-17T15:30:00Z'),
+        tecnico: {
+          nombre: 'Ing. Daniela Soto (Téc. Sistemas)',
+          id_tecnico: 'TEC-UTM-045',
+          departamento: 'Sistemas y Servicios Académicos',
+        },
+        comentario: 'Se asigna la incidencia al área de sistemas.',
+        diagnostico: 'Se asigna la incidencia al área de sistemas.',
+        estadoAnterior: 'abierta',
+        estado_anterior: 'abierta',
+        estadoNuevo: 'asignada',
+        estado_asignado: 'asignada',
+      },
+    ],
+    evidencias_adjuntas: [
+      {
+        nombre_archivo: 'error_actas.png',
+        nombre_original: 'error_actas.png',
+        tipo_mime: 'image/png',
+        peso_kb: 286,
+        tamanio_bytes: 292864,
+        tamanio_original_bytes: 1120000,
+        ahorro_compresion: '73.9%',
+        ruta_storage: 'INC-2026-0020/1792249500000_error_actas.png',
+        supabase_path: 'INC-2026-0020/1792249500000_error_actas.png',
+        url_storage: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+        url_firmada: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
+        url_expira: new Date(Date.now() + 6 * 24 * 3600 * 1000),
+        subido_por: 'Alumno Daniel García',
+        fecha_carga: new Date('2026-10-17T15:05:00Z'),
+        fecha_subida: new Date('2026-10-17T15:05:00Z'),
+      },
+    ],
+  },
 ];
 
 const seedDatabase = async () => {
@@ -481,17 +739,32 @@ const seedDatabase = async () => {
       Edificio.deleteMany({}),
     ]);
 
-    console.log('🌱 [Seed] Insertando usuarios RBAC...');
-    await Usuario.insertMany(demoUsuarios);
+    console.log('🌱 [Seed] Insertando usuarios RBAC + Super Admin con contraseñas encriptadas (bcrypt)...');
+    const usuariosConHash = await Promise.all(
+      demoUsuarios.map(async (u) => {
+        const plain = u.passwordPlain || 'utm123456';
+        const hashedPassword = await bcrypt.hash(plain, 10);
+        const copy = { ...u, password: hashedPassword, creadoEn: new Date() };
+        delete copy.passwordPlain;
+        return copy;
+      })
+    );
+    await Usuario.insertMany(usuariosConHash);
 
     console.log('🏢 [Seed] Insertando catálogo de edificios y aulas...');
     await Edificio.insertMany(demoEdificios);
 
     console.log('📋 [Seed] Insertando incidencias polimórficas con trazabilidad RBAC...');
-    await Incidencia.insertMany(demoIncidencias);
+    for (const incData of demoIncidencias) {
+      const doc = new Incidencia(incData);
+      await doc.save();
+    }
+
+    console.log('⚡ [Seed] Sincronizando los 4 índices de Tabla 8 en incidencias_campus...');
+    await Incidencia.syncIndexes();
 
     console.log(`✅ [Seed] ¡Base de datos poblada exitosamente!`);
-    console.log(`   • ${demoUsuarios.length} usuarios con roles RBAC`);
+    console.log(`   • ${demoUsuarios.length} usuarios con roles RBAC (incluyendo Super Admin)`);
     console.log(`   • ${demoEdificios.length} edificios con aulas`);
     console.log(`   • ${demoIncidencias.length} incidencias para analítica`);
     return true;

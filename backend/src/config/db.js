@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const mongoose = require('mongoose');
 
 const connectDB = async () => {
@@ -11,7 +13,7 @@ const connectDB = async () => {
 
   try {
     const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 5000,
+      serverSelectionTimeoutMS: 8000,
       dbName: 'utm_desk_db',
     });
     console.log(`✅ [MongoDB Atlas] Conectado exitosamente: ${conn.connection.host} (Base de datos: ${conn.connection.name})`);

@@ -1,7 +1,7 @@
 const Usuario = require('../models/Usuario');
 const Edificio = require('../models/Edificio');
 
-// ==================== USUARIOS (CRUD ADMIN) ====================
+// ==================== USUARIOS (CRUD ADMIN / SUPERADMIN) ====================
 
 const getUsuarios = async (req, res, next) => {
   try {
@@ -14,32 +14,61 @@ const getUsuarios = async (req, res, next) => {
 
 const createUsuario = async (req, res, next) => {
   try {
-    const { nombre, email, rol, area, cargo, departamento_carrera, id_tecnico } = req.body;
+    const {
+      nombre,
+      email,
+      correo,
+      password,
+      rol,
+      area,
+      cargo,
+      departamento_carrera,
+      id_tecnico,
+    } = req.body;
 
-    const existe = await Usuario.findOne({ email: email.toLowerCase() });
-    if (existe) {
-      return res.status(409).json({
+    const finalEmail = (email || correo || '').trim().toLowerCase();
+    if (!finalEmail) {
+      return res.status(400).json({
         ok: false,
-        error: `El correo '${email}' ya se encuentra registrado en el sistema.`,
+        error: 'El correo institucional (correo / email) es obligatorio.',
       });
     }
 
+    const existe = await Usuario.findOne({
+      $or: [{ email: finalEmail }, { correo: finalEmail }],
+    });
+    if (existe) {
+      return res.status(409).json({
+        ok: false,
+        error: `El correo '${finalEmail}' ya se encuentra registrado en el sistema.`,
+      });
+    }
+
+    // Según Tabla 9: Solo los técnicos necesitan el campo area
+    const finalArea = rol === 'tecnico' ? area || 'computo_telecomunicaciones' : null;
+
     const nuevoUsuario = new Usuario({
       nombre,
-      email: email.toLowerCase(),
-      rol,
-      area: area || 'general',
+      correo: finalEmail,
+      email: finalEmail,
+      password: password || 'utm123456',
+      rol: rol || 'reportante',
+      area: finalArea,
       cargo: cargo || 'Personal Universitario',
       departamento_carrera: departamento_carrera || 'Campus General',
       id_tecnico: id_tecnico || null,
       activo: true,
+      creadoEn: new Date(),
     });
 
     const guardado = await nuevoUsuario.save();
+    const obj = guardado.toObject();
+    delete obj.password;
+
     return res.status(201).json({
       ok: true,
       mensaje: 'Usuario registrado exitosamente',
-      usuario: guardado,
+      usuario: obj,
     });
   } catch (error) {
     next(error);
@@ -51,12 +80,14 @@ const updateUsuario = async (req, res, next) => {
     const { id } = req.params;
     const { nombre, rol, area, cargo, departamento_carrera, activo, id_tecnico } = req.body;
 
+    const finalArea = rol && rol !== 'tecnico' ? null : area;
+
     const actualizado = await Usuario.findByIdAndUpdate(
       id,
       {
         nombre,
         rol,
-        area,
+        area: finalArea,
         cargo,
         departamento_carrera,
         activo,
@@ -97,7 +128,7 @@ const deleteUsuario = async (req, res, next) => {
   }
 };
 
-// ==================== EDIFICIOS Y AULAS (CRUD ADMIN) ====================
+// ==================== EDIFICIOS Y AULAS (CRUD ADMIN / SUPERADMIN) ====================
 
 const getEdificios = async (req, res, next) => {
   try {
@@ -110,18 +141,29 @@ const getEdificios = async (req, res, next) => {
 
 const createEdificio = async (req, res, next) => {
   try {
-    const { codigo, nombre, descripcion, pisos, responsable, aulas } = req.body;
+    const { clave, codigo, nombre, descripcion, pisos, responsable, aulas } = req.body;
+    const finalClave = (clave || codigo || '').trim().toUpperCase();
 
-    const existe = await Edificio.findOne({ codigo: codigo.toUpperCase() });
+    if (!finalClave) {
+      return res.status(400).json({
+        ok: false,
+        error: 'La clave corta del edificio (ej. ED-A) es obligatoria.',
+      });
+    }
+
+    const existe = await Edificio.findOne({
+      $or: [{ codigo: finalClave }, { clave: finalClave }],
+    });
     if (existe) {
       return res.status(409).json({
         ok: false,
-        error: `Ya existe un edificio con el código '${codigo.toUpperCase()}'.`,
+        error: `Ya existe un edificio con la clave '${finalClave}'.`,
       });
     }
 
     const nuevoEdificio = new Edificio({
-      codigo: codigo.toUpperCase(),
+      clave: finalClave,
+      codigo: finalClave,
       nombre,
       descripcion: descripcion || '',
       pisos: pisos || 1,
@@ -144,20 +186,25 @@ const createEdificio = async (req, res, next) => {
 const updateEdificio = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, pisos, responsable, aulas, activo } = req.body;
+    const { clave, codigo, nombre, descripcion, pisos, responsable, aulas, activo } = req.body;
 
-    const actualizado = await Edificio.findByIdAndUpdate(
-      id,
-      {
-        nombre,
-        descripcion,
-        pisos,
-        responsable,
-        aulas,
-        activo,
-      },
-      { new: true, runValidators: true }
-    );
+    const updateFields = {
+      nombre,
+      descripcion,
+      pisos,
+      responsable,
+      aulas,
+      activo,
+    };
+    if (clave || codigo) {
+      updateFields.clave = (clave || codigo).toUpperCase();
+      updateFields.codigo = (clave || codigo).toUpperCase();
+    }
+
+    const actualizado = await Edificio.findByIdAndUpdate(id, updateFields, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!actualizado) {
       return res.status(404).json({ ok: false, error: 'Edificio no encontrado' });
@@ -184,7 +231,7 @@ const deleteEdificio = async (req, res, next) => {
 
     return res.status(200).json({
       ok: true,
-      mensaje: `Edificio '${eliminado.nombre}' eliminado correctamente del catálogo.`,
+      mensaje: `Edificio '${eliminado.nombre}' eliminado del catálogo.`,
     });
   } catch (error) {
     next(error);

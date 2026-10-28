@@ -1,12 +1,12 @@
 const multer = require('multer');
 
-// Almacenamiento en memoria para pasar directamente el buffer a Supabase Storage
+// Almacenamiento en memoria para pasar el buffer al compresor Sharp HD y luego a Supabase Storage
 const storage = multer.memoryStorage();
 
-// Límite estricto de 5 Megabytes (5 * 1024 * 1024 bytes)
+// Límite estricto de 5 Megabytes (5 * 1024 * 1024 bytes) conforme a RF-06 y RNF-06
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-// Filtro de tipos MIME: Solo JPG, PNG y PDF
+// Filtro de tipos MIME: JPG, PNG y PDF conforme a RF-06 y RNF-06
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [
     'image/jpeg',
