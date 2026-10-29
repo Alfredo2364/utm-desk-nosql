@@ -17,6 +17,7 @@ import {
   Layers,
   ChevronRight,
   Copy,
+  Link2,
 } from 'lucide-react';
 import { getIncidenciaByCodigo, addRevision, patchEstado } from '../services/api';
 import PolymorphicDetail from './PolymorphicDetail';
@@ -35,12 +36,23 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [changingStatus, setChangingStatus] = useState(false);
   const [copiedFolio, setCopiedFolio] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const handleCopyFolio = () => {
     if (codigo) {
       navigator.clipboard.writeText(codigo);
       setCopiedFolio(true);
       setTimeout(() => setCopiedFolio(false), 2000);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (codigo) url.searchParams.set('id', codigo);
+      navigator.clipboard.writeText(url.toString());
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
@@ -60,7 +72,26 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
   useEffect(() => {
     if (codigo) {
       fetchDossier();
+      // Garantizar que la URL refleje inmediatamente ?id=<codigo>
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        if (url.searchParams.get('id') !== codigo && url.searchParams.get('folio') !== codigo) {
+          url.searchParams.set('id', codigo);
+          url.searchParams.delete('folio');
+          window.history.replaceState({}, '', url.pathname + '?' + url.searchParams.toString());
+        }
+      }
     }
+    return () => {
+      // Al desmontar el modal, retirar el parámetro id de la URL
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('id');
+        url.searchParams.delete('folio');
+        const qs = url.searchParams.toString();
+        window.history.replaceState({}, '', url.pathname + (qs ? `?${qs}` : ''));
+      }
+    };
   }, [codigo]);
 
   const handleAddRevision = async (reviewData) => {
@@ -184,9 +215,17 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
 
           <div className="flex items-center space-x-1.5">
             <button
+              onClick={handleCopyLink}
+              title="Copiar URL directa de este ticket para compartir"
+              className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-[11px] font-mono border border-slate-700 transition-colors cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Link2 className="w-3 h-3 text-cyan-400" />}
+              <span>{copiedLink ? 'URL Copiada' : 'Copiar URL'}</span>
+            </button>
+            <button
               onClick={handleCopyFolio}
               title="Copiar Folio Oficial"
-              className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-[11px] font-mono border border-slate-700 transition-colors"
+              className="flex items-center space-x-1 px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded text-[11px] font-mono border border-slate-700 transition-colors cursor-pointer"
             >
               {copiedFolio ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
               <span>{copiedFolio ? 'Copiado' : 'Copiar Folio'}</span>
