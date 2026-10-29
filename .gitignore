@@ -39,3 +39,5 @@ lerna-debug.log*
 *.sw?
 .DS_Store
 Thumbs.db
+DOCUMENTACION_TECNICA_COMPLETA.md
+USUARIOS_Y_CREDENCIALES.md
