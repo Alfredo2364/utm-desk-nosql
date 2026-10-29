@@ -1,4 +1,9 @@
-const sharp = require('sharp');
+let sharp = null;
+try {
+  sharp = require('sharp');
+} catch (err) {
+  console.warn('⚠️ [ImageOptimizer] Sharp no disponible en este entorno serverless, se usará passthrough:', err.message);
+}
 
 /**
  * Optimizador inteligente de imágenes para evidencias de UTM Desk
@@ -18,8 +23,8 @@ const sharp = require('sharp');
 const optimizeEvidenceBuffer = async (fileBuffer, mimeType, originalName = '') => {
   const originalSize = fileBuffer.length;
 
-  // Si no es imagen (por ejemplo, documentos PDF), retornar sin modificar
-  if (!mimeType || !mimeType.startsWith('image/')) {
+  // Si no es imagen (por ejemplo, documentos PDF) o sharp no está disponible, retornar sin modificar
+  if (!sharp || !mimeType || !mimeType.startsWith('image/')) {
     return {
       buffer: fileBuffer,
       mimeType,

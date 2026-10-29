@@ -26,6 +26,7 @@ function autoStartBackendPlugin() {
   return {
     name: 'utm-auto-start-backend',
     configureServer() {
+      if (process.env.VERCEL || process.env.CI) return;
       const req = http.get('http://localhost:5000/api/health', (res) => {
         let raw = '';
         res.on('data', (chunk) => {
