@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AssignTechnicianModal from '../AssignTechnicianModal';
+import { matchFuzzy } from '../../utils/searchHelper';
 
 export default function SupervisorDashboard({
   incidencias = [],
@@ -43,15 +44,8 @@ export default function SupervisorDashboard({
         return false;
       }
     }
-    if (searchTerm.trim() !== '') {
-      const q = searchTerm.toLowerCase();
-      const matchCodigo = inc.codigo?.toLowerCase().includes(q);
-      const matchTitulo = inc.titulo?.toLowerCase().includes(q);
-      const matchTecnico = inc.tecnico_asignado?.nombre?.toLowerCase().includes(q);
-      const matchUbicacion =
-        inc.ubicacion?.edificio?.toLowerCase().includes(q) ||
-        inc.ubicacion?.aula_laboratorio?.toLowerCase().includes(q);
-      if (!matchCodigo && !matchTitulo && !matchTecnico && !matchUbicacion) return false;
+    if (searchTerm && !matchFuzzy(inc, searchTerm)) {
+      return false;
     }
     return true;
   });

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { patchEstado } from '../../services/api';
+import { matchFuzzy } from '../../utils/searchHelper';
 
 export default function TecnicoDashboard({
   incidencias = [],
@@ -43,12 +44,8 @@ export default function TecnicoDashboard({
       }
     }
     if (priorityFilter !== 'todas' && inc.prioridad !== priorityFilter) return false;
-    if (searchTerm.trim() !== '') {
-      const q = searchTerm.toLowerCase();
-      const matchCod = inc.codigo?.toLowerCase().includes(q);
-      const matchTit = inc.titulo?.toLowerCase().includes(q);
-      const matchUbi = inc.ubicacion?.edificio?.toLowerCase().includes(q) || inc.ubicacion?.aula_laboratorio?.toLowerCase().includes(q);
-      if (!matchCod && !matchTit && !matchUbi) return false;
+    if (searchTerm && !matchFuzzy(inc, searchTerm)) {
+      return false;
     }
     return true;
   });

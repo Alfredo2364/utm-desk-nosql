@@ -16,23 +16,114 @@ const generarCodigoIncidencia = async () => {
   return codigo;
 };
 
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /**
- * Busca una incidencia por código exacto o equivalente (soporta INC-YYYY-NNNN y UTM-YYYY-NNNN)
+ * Construye una expresión regular insensible a acentos/diacríticos y mayúsculas.
+ * Soporta "sAbado" <-> "Sábado", "MartEs" <-> "martes", "ano" <-> "año", etc.
  */
-const buscarPorCodigo = async (rawCodigo) => {
-  const upper = rawCodigo.trim().toUpperCase();
-  let inc = await Incidencia.findOne({ codigo: upper });
-  if (!inc) {
-    const alt = upper.startsWith('UTM-')
-      ? upper.replace(/^UTM-/, 'INC-')
-      : upper.startsWith('INC-')
-      ? upper.replace(/^INC-/, 'UTM-')
-      : null;
-    if (alt) {
-      inc = await Incidencia.findOne({ codigo: alt });
+function buildAccentInsensitiveRegex(raw) {
+  if (!raw || !String(raw).trim()) return null;
+  const clean = String(raw).trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const charMap = {
+    'a': '[aáàäâAÁÀÄÂ]',
+    'e': '[eéèëêEÉÈËÊ]',
+    'i': '[iíìïîIÍÌÏÎ]',
+    'o': '[oóòöôOÓÒÖÔ]',
+    'u': '[uúùüûUÚÙÜÛ]',
+    'n': '[nñNÑ]',
+    'c': '[cçCÇ]'
+  };
+  let pattern = '';
+  for (const char of clean) {
+    const lower = char.toLowerCase();
+    if (charMap[lower]) {
+      pattern += charMap[lower];
+    } else {
+      pattern += escapeRegex(char);
     }
   }
-  return inc;
+  try {
+    return new RegExp(pattern, 'i');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Parsea un folio flexible extrayendo año y número secuencial
+ */
+function parseFolio(raw) {
+  if (!raw) return null;
+  const clean = String(raw).toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const match = clean.match(/^(?:INC|UTM)?(?:(202\d))?0*(\d{1,5})$/);
+  if (match) {
+    const year = match[1] || '202[0-9]';
+    const num = match[2];
+    const padded = num.padStart(4, '0');
+    return {
+      year,
+      num,
+      padded,
+      pattern: `-(?:${year}-)?0*${num}$`
+    };
+  }
+  return null;
+}
+
+/**
+ * Busca una incidencia por código exacto o equivalente (soporta INC-YYYY-NNNN, UTM-YYYY-NNNN, inc20260001, 0001, 1, etc.)
+ */
+const buscarPorCodigo = async (rawCodigo) => {
+  if (!rawCodigo) return null;
+  const raw = String(rawCodigo).trim();
+  const upper = raw.toUpperCase();
+
+  // 1. Coincidencia exacta directa
+  let inc = await Incidencia.findOne({ codigo: upper });
+  if (inc) return inc;
+
+  // 2. Prefijo alternativo UTM- <-> INC-
+  const alt = upper.startsWith('UTM-')
+    ? upper.replace(/^UTM-/, 'INC-')
+    : upper.startsWith('INC-')
+    ? upper.replace(/^INC-/, 'UTM-')
+    : null;
+  if (alt) {
+    inc = await Incidencia.findOne({ codigo: alt });
+    if (inc) return inc;
+  }
+
+  // 3. Parser de Folio Inteligente (soporta "inc20260001", "2026-0001", "utm 2026 0001", "0001", "1")
+  const parsed = parseFolio(raw);
+  if (parsed) {
+    try {
+      inc = await Incidencia.findOne({
+        codigo: { $regex: new RegExp(parsed.pattern, 'i') },
+      });
+      if (inc) return inc;
+    } catch {
+      // continuar
+    }
+  }
+
+  // 4. Búsqueda por número puro al final (ej. "1", "6", "0001", "0006")
+  const numMatch = raw.match(/\d+$/);
+  if (numMatch) {
+    const padded = numMatch[0].padStart(4, '0');
+    try {
+      inc = await Incidencia.findOne({
+        codigo: { $regex: new RegExp(`-${padded}$`, 'i') },
+      });
+      if (inc) return inc;
+    } catch {
+      // continuar
+    }
+  }
+
+  return null;
 };
 
 /**
@@ -85,21 +176,40 @@ const getIncidencias = async (req, res, next) => {
       filtro.prioridad = prioridad;
     }
 
-    if (search && search.trim() !== '') {
-      const regex = new RegExp(search.trim(), 'i');
-      const searchOr = [
-        { codigo: regex },
-        { titulo: regex },
-        { 'ubicacion.edificio': regex },
-        { 'ubicacion.edificioId': regex },
-        { 'ubicacion.aula': regex },
-        { 'ubicacion.aula_laboratorio': regex },
-      ];
-      if (filtro.$or) {
-        filtro.$and = [{ $or: filtro.$or }, { $or: searchOr }];
-        delete filtro.$or;
-      } else {
-        filtro.$or = searchOr;
+    if (search && String(search).trim() !== '') {
+      const trimmedSearch = String(search).trim();
+      const regex = buildAccentInsensitiveRegex(trimmedSearch);
+      const searchOr = [];
+
+      if (regex) {
+        searchOr.push(
+          { codigo: regex },
+          { titulo: regex },
+          { descripcion: regex },
+          { categoria: regex },
+          { 'ubicacion.edificio': regex },
+          { 'ubicacion.edificioId': regex },
+          { 'ubicacion.aula': regex },
+          { 'ubicacion.aula_laboratorio': regex },
+          { 'tecnico_asignado.nombre': regex },
+          { 'reportante.nombre': regex }
+        );
+      }
+
+      // Soporte para buscar folio por número directo (ej: "0006" o "6")
+      const numMatch = trimmedSearch.match(/^\d{1,4}$/);
+      if (numMatch) {
+        const padded = numMatch[0].padStart(4, '0');
+        searchOr.push({ codigo: new RegExp(`-${padded}$`, 'i') });
+      }
+
+      if (searchOr.length > 0) {
+        if (filtro.$or) {
+          filtro.$and = [{ $or: filtro.$or }, { $or: searchOr }];
+          delete filtro.$or;
+        } else {
+          filtro.$or = searchOr;
+        }
       }
     }
 
@@ -655,6 +765,8 @@ const asignarTecnico = async (req, res, next) => {
 module.exports = {
   getIncidencias,
   getIncidenciaByCodigo,
+  buscarPorCodigo,
+  buildAccentInsensitiveRegex,
   createIncidencia,
   subirEvidencia,
   actualizarEstado,

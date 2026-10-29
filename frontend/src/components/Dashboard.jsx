@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import IncidentCard from './IncidentCard';
+import { matchFuzzy } from '../utils/searchHelper';
 
 export default function Dashboard({
   incidencias = [],
@@ -28,6 +29,10 @@ export default function Dashboard({
   isSeeding,
 }) {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+
+  const incidenciasFiltradas = filters?.search
+    ? incidencias.filter((inc) => matchFuzzy(inc, filters.search))
+    : incidencias;
 
   const categories = [
     { id: 'todas', label: 'Todas las Categorías' },
@@ -271,7 +276,7 @@ export default function Dashboard({
             </div>
           ))}
         </div>
-      ) : incidencias.length === 0 ? (
+      ) : incidenciasFiltradas.length === 0 ? (
         <div className="bg-white rounded-lg border border-slate-200 p-10 text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
             <Inbox className="w-6 h-6" />
@@ -295,7 +300,7 @@ export default function Dashboard({
         </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-          {incidencias.map((incidencia) => (
+          {incidenciasFiltradas.map((incidencia) => (
             <IncidentCard
               key={incidencia._id || incidencia.codigo}
               incidencia={incidencia}
@@ -321,7 +326,7 @@ export default function Dashboard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {incidencias.map((inc) => (
+                {incidenciasFiltradas.map((inc) => (
                   <tr
                     key={inc._id || inc.codigo}
                     onClick={() => onSelectIncidencia(inc)}

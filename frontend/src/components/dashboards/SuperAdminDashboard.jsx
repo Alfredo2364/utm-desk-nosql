@@ -19,6 +19,7 @@ import ReportanteDashboard from './ReportanteDashboard';
 import AssignTechnicianModal from '../AssignTechnicianModal';
 import { patchEstado } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { matchFuzzy } from '../../utils/searchHelper';
 
 export default function SuperAdminDashboard({
   incidencias = [],
@@ -65,15 +66,8 @@ export default function SuperAdminDashboard({
         return false;
       }
     }
-    if (searchTerm.trim() !== '') {
-      const q = searchTerm.toLowerCase();
-      const mCod = inc.codigo?.toLowerCase().includes(q);
-      const mTit = inc.titulo?.toLowerCase().includes(q);
-      const mUbi =
-        inc.ubicacion?.edificio?.toLowerCase().includes(q) ||
-        inc.ubicacion?.aula?.toLowerCase().includes(q) ||
-        inc.ubicacion?.aula_laboratorio?.toLowerCase().includes(q);
-      if (!mCod && !mTit && !mUbi) return false;
+    if (searchTerm && !matchFuzzy(inc, searchTerm)) {
+      return false;
     }
     return true;
   });

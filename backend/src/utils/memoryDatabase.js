@@ -19,6 +19,12 @@ function matchesCondition(fieldVal, cond) {
     return cond.test(String(fieldVal ?? ''));
   }
   if (cond && typeof cond === 'object' && !(cond instanceof Date) && !mongoose.isValidObjectId(cond)) {
+    if (cond.$regex !== undefined) {
+      const reg = cond.$regex instanceof RegExp
+        ? cond.$regex
+        : new RegExp(String(cond.$regex), cond.$options || 'i');
+      return reg.test(String(fieldVal ?? ''));
+    }
     if (Array.isArray(cond.$in)) {
       return cond.$in.some((item) => String(item) === String(fieldVal));
     }

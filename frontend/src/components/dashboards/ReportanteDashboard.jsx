@@ -12,6 +12,7 @@ import {
   Filter,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { matchFuzzy } from '../../utils/searchHelper';
 
 export default function ReportanteDashboard({
   incidencias = [],
@@ -29,12 +30,8 @@ export default function ReportanteDashboard({
 
   const filtradas = incidencias.filter((inc) => {
     if (estadoFilter !== 'todos' && inc.estado !== estadoFilter) return false;
-    if (searchTerm.trim() !== '') {
-      const q = searchTerm.toLowerCase();
-      const matchCod = inc.codigo?.toLowerCase().includes(q);
-      const matchTit = inc.titulo?.toLowerCase().includes(q);
-      const matchUbi = inc.ubicacion?.edificio?.toLowerCase().includes(q) || inc.ubicacion?.aula_laboratorio?.toLowerCase().includes(q);
-      if (!matchCod && !matchTit && !matchUbi) return false;
+    if (searchTerm && !matchFuzzy(inc, searchTerm)) {
+      return false;
     }
     return true;
   });
