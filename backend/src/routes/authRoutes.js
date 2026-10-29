@@ -112,7 +112,12 @@ router.post('/login', async (req, res, next) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const isSuperAdminEmail =
+      cleanEmail === 'lizandro.reyes@utmetropolitana.edu.mx' ||
+      cleanEmail === 'superadmin@utm.mx';
+
     const emailAliases = {
+      'superadmin@utm.mx': 'lizandro.reyes@utmetropolitana.edu.mx',
       'admin@utm.mx': 'admin.sistemas@utm.mx',
       'directivo@utm.mx': 'directora.academica@utm.mx',
       'supervisor@utm.mx': 'supervisor.campus@utm.mx',
@@ -132,13 +137,13 @@ router.post('/login', async (req, res, next) => {
       ],
     });
 
-    // Si es el Super Admin y aún no estaba en la colección, registrarlo automáticamente en Atlas
-    if (!usuario && cleanEmail === 'superadmin@utm.mx') {
+    // Si es el Super Admin y aún no estaba en la colección, registrarlo automáticamente
+    if (!usuario && isSuperAdminEmail) {
       usuario = new Usuario({
-        nombre: 'Super Administrador General UTM',
-        email: 'superadmin@utm.mx',
-        correo: 'superadmin@utm.mx',
-        password: 'superutm2026',
+        nombre: 'Ing. Lizandro Reyes',
+        email: 'lizandro.reyes@utmetropolitana.edu.mx',
+        correo: 'lizandro.reyes@utmetropolitana.edu.mx',
+        password: 'lizandro_2026',
         rol: 'superadmin',
         area: null,
         cargo: 'Super Administrador General — Control Total y Ejecución Global',
@@ -167,8 +172,8 @@ router.post('/login', async (req, res, next) => {
     let esPasswordValida = await usuario.compararPassword(password);
     if (
       !esPasswordValida &&
-      cleanEmail === 'superadmin@utm.mx' &&
-      password === 'superutm2026'
+      isSuperAdminEmail &&
+      (password === 'lizandro_2026' || password === 'superutm2026')
     ) {
       esPasswordValida = true;
     }

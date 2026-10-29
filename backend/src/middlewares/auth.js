@@ -66,12 +66,12 @@ const autenticar = async (req, res, next) => {
       return next();
     }
 
-    // Usuario por defecto si no se envían cabeceras (Admin/SuperAdmin para pruebas directas de Postman sin cabeceras o Reportante)
+    // Usuario por defecto si no se envían cabeceras (SuperAdmin para pruebas de backend)
     req.user = {
       _id: 'postman-superadmin-id',
-      email: 'superadmin@utm.mx',
-      correo: 'superadmin@utm.mx',
-      nombre: 'Super Administrador General UTM',
+      email: 'lizandro.reyes@utmetropolitana.edu.mx',
+      correo: 'lizandro.reyes@utmetropolitana.edu.mx',
+      nombre: 'Ing. Lizandro Reyes',
       rol: 'superadmin',
       area: 'general',
     };

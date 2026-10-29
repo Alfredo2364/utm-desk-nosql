@@ -8,10 +8,10 @@ const connectDB = require('../config/db');
 
 const demoUsuarios = [
   {
-    nombre: 'Super Administrador General UTM',
-    email: 'superadmin@utm.mx',
-    correo: 'superadmin@utm.mx',
-    passwordPlain: 'superutm2026',
+    nombre: 'Ing. Lizandro Reyes',
+    email: 'lizandro.reyes@utmetropolitana.edu.mx',
+    correo: 'lizandro.reyes@utmetropolitana.edu.mx',
+    passwordPlain: 'lizandro_2026',
     rol: 'superadmin',
     area: null,
     cargo: 'Super Administrador General — Control Total y Ejecución Global',

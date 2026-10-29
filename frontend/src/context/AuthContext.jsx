@@ -6,8 +6,8 @@ const AuthContext = createContext();
 const DEFAULT_USUARIOS_DEMO = [
   {
     _id: 'supadm-01',
-    nombre: 'Super Administrador General UTM',
-    email: 'superadmin@utm.mx',
+    nombre: 'Ing. Lizandro Reyes',
+    email: 'lizandro.reyes@utmetropolitana.edu.mx',
     rol: 'superadmin',
     area: null,
     cargo: 'Super Administrador General — Control Total y Ejecución Global',
@@ -90,8 +90,8 @@ export function AuthProvider({ children }) {
           setUsuariosDemo(data.usuarios);
         }
       })
-      .catch((err) => {
-        console.warn('No se pudieron cargar usuarios demo desde el backend:', err.message);
+      .catch(() => {
+        // Silencioso para no dejar registros en la consola del navegador
       });
   }, []);
 
