@@ -38,13 +38,13 @@ app.use(async (req, res, next) => {
 app.use(autenticar);
 
 // Ruta de comprobación de salud y configuración
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.status(200).json({
     ok: true,
     sistema: 'UTM Desk NoSQL Cloud API',
-    version: '1.4.0 (Vercel Serverless + RBAC + Respaldo NoSQL)',
+    version: '1.5.0 (Vercel Services + Express + Vite)',
     respaldoNoSQL: true,
-    entorno: process.env.VERCEL ? 'Vercel Serverless' : 'Servidor Local',
+    entorno: process.env.VERCEL ? 'Vercel Services' : 'Servidor Local',
     estadoConexionMongo: mongoose.connection.readyState === 1 ? 'MongoDB Atlas Conectado' : 'Respaldo NoSQL Activo',
     usuarioActual: req.user ? { email: req.user.email, rol: req.user.rol } : null,
     servicios: {
@@ -55,11 +55,11 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Rutas Principales del Sistema
-app.use('/api/auth', authRoutes);
-app.use('/api/incidencias', incidenciasRoutes);
-app.use('/api/analitica', analiticaRoutes);
-app.use('/api', catalogosRoutes); // /api/usuarios y /api/edificios
+// Rutas Principales del Sistema (Soporta /api/* y rutas directas de servicios)
+app.use(['/api/auth', '/auth'], authRoutes);
+app.use(['/api/incidencias', '/incidencias'], incidenciasRoutes);
+app.use(['/api/analitica', '/analitica'], analiticaRoutes);
+app.use(['/api', '/'], catalogosRoutes); // /usuarios y /edificios
 
 // Manejo de rutas no encontradas (404)
 app.use((req, res) => {
@@ -72,8 +72,8 @@ app.use((req, res) => {
 // Middleware de manejo de errores centralizado
 app.use(errorHandler);
 
-// En entorno local (fuera de Vercel Serverless), iniciar el servidor HTTP en el puerto configurado
-if (!process.env.VERCEL && require.main === module) {
+// Iniciar servidor HTTP cuando se ejecute directamente (Local o Vercel Express Service)
+if (require.main === module) {
   const startServer = async () => {
     await connectDB();
 
