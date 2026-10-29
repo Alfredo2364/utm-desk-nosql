@@ -216,10 +216,10 @@ export default function AdminDashboard({
         </div>
 
         {/* Tab Navigation Enterprise */}
-        <div className="flex items-center p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold shrink-0">
+        <div className="flex flex-wrap items-center p-1 bg-slate-100 rounded-lg border border-slate-200 text-xs font-semibold shrink-0 gap-1">
           <button
             onClick={() => setActiveTab('operativa')}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-4 py-2 rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'operativa'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                 : 'text-slate-600 hover:text-slate-900'
@@ -229,7 +229,7 @@ export default function AdminDashboard({
           </button>
           <button
             onClick={() => setActiveTab('analitica')}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-4 py-2 rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'analitica'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                 : 'text-slate-600 hover:text-slate-900'
@@ -239,7 +239,7 @@ export default function AdminDashboard({
           </button>
           <button
             onClick={() => setActiveTab('usuarios')}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-4 py-2 rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'usuarios'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                 : 'text-slate-600 hover:text-slate-900'
@@ -249,7 +249,7 @@ export default function AdminDashboard({
           </button>
           <button
             onClick={() => setActiveTab('edificios')}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-4 py-2 rounded-md transition-all whitespace-nowrap cursor-pointer ${
               activeTab === 'edificios'
                 ? 'bg-white text-slate-900 shadow-xs border border-slate-200 font-bold'
                 : 'text-slate-600 hover:text-slate-900'

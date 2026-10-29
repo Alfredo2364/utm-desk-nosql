@@ -151,23 +151,23 @@ export default function SupervisorDashboard({
       </div>
 
       {/* Toolbar & Filters */}
-      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por código, técnico o aula..."
+            placeholder="Buscar por código de folio, técnico, edificio o aula..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 text-xs focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 shrink-0">
           <select
             value={filtroArea}
             onChange={(e) => setFiltroArea(e.target.value)}
-            className="px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium bg-white"
+            className="px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white min-w-[190px] cursor-pointer"
           >
             <option value="todas">Todas las Áreas</option>
             <option value="computo_telecomunicaciones">Cómputo & Redes</option>
@@ -178,7 +178,7 @@ export default function SupervisorDashboard({
           <select
             value={filtroEstado}
             onChange={(e) => setFiltroEstado(e.target.value)}
-            className="px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium bg-white"
+            className="px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs font-semibold bg-white min-w-[170px] cursor-pointer"
           >
             <option value="todos">Todos los Estados</option>
             <option value="abierta">Abiertas</option>
@@ -221,48 +221,48 @@ export default function SupervisorDashboard({
                   onClick={() => onSelectIncidencia(inc)}
                   className="hover:bg-slate-50/80 cursor-pointer transition-colors"
                 >
-                  <td className="px-4 py-3 font-mono font-bold text-slate-900">
+                  <td className="px-4 py-3.5 font-mono font-bold text-slate-900 whitespace-nowrap">
                     {inc.codigo}
                   </td>
-                  <td className="px-4 py-3 font-medium text-slate-800 max-w-xs truncate">
+                  <td className="px-4 py-3.5 font-medium text-slate-800 max-w-xs truncate">
                     {inc.titulo}
                   </td>
-                  <td className="px-4 py-3 capitalize text-slate-600">
-                    {inc.categoria?.replace('_', ' ')}
+                  <td className="px-4 py-3.5 capitalize text-slate-600 whitespace-nowrap">
+                    {inc.categoria?.replace(/_/g, ' ')}
                   </td>
-                  <td className="px-4 py-3 text-slate-600">
-                    <div>{inc.ubicacion?.edificio}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{inc.ubicacion?.aula_laboratorio}</div>
+                  <td className="px-4 py-3.5 text-slate-600 max-w-[220px]">
+                    <div className="font-semibold text-slate-800 truncate">{inc.ubicacion?.edificio}</div>
+                    <div className="text-[11px] text-slate-400 font-mono truncate">{inc.ubicacion?.aula_laboratorio}</div>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     {getPriorityBadge(inc.prioridad)}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                      {inc.estado?.replace('_', ' ')}
+                  <td className="px-4 py-3.5 whitespace-nowrap">
+                    <span className="px-2.5 py-1 rounded-md text-[10px] uppercase font-bold bg-slate-100 text-slate-800 border border-slate-200 whitespace-nowrap">
+                      {inc.estado?.replace(/_/g, ' ')}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 whitespace-nowrap">
                     {inc.tecnico_asignado?.nombre ? (
-                      <div className="font-semibold text-slate-800 flex items-center gap-1">
-                        <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <div className="font-semibold text-slate-800 inline-flex items-center gap-1.5">
+                        <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                         <span>{inc.tecnico_asignado.nombre}</span>
                       </div>
                     ) : (
-                      <span className="text-amber-700 font-semibold bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                      <span className="text-amber-700 font-semibold bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 text-[10px] whitespace-nowrap">
                         ⚠️ Sin Asignar
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3.5 text-right whitespace-nowrap">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedIncidenciaParaAsignar(inc);
                       }}
-                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded text-[11px] font-semibold transition-colors"
+                      className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer"
                     >
-                      {inc.tecnico_asignado?.nombre ? 'Reasignar' : 'Asignar'}
+                      {inc.tecnico_asignado?.nombre ? 'Reasignar' : 'Asignar Técnico'}
                     </button>
                   </td>
                 </tr>

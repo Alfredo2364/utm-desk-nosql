@@ -185,7 +185,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-800">
+    <div className="min-h-screen w-full overflow-x-hidden bg-slate-100 flex flex-col font-sans text-slate-800">
       <Navbar
         onOpenNewModal={() => setIsNewModalOpen(true)}
         onSeedData={handleSeedData}
@@ -196,12 +196,12 @@ export default function App() {
         onTrackFolio={(folio) => setSelectedCodigo(folio)}
       />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {renderRoleDashboard()}
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-6 text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="bg-white border-t border-slate-200 py-5 text-xs text-slate-500 mt-auto">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="font-bold text-slate-800">UTM Desk NoSQL Cloud</span>
             <span>•</span>
