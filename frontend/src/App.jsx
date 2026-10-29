@@ -23,6 +23,122 @@ export default function App() {
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [activeNav, setActiveNav] = useState('dashboard'); // 'dashboard' | 'analitica' | 'catalogos'
 
+  // Sincronizar parámetros en la URL (id / folio, tab, nuevo)
+  const syncUrlParams = (updates = {}) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+
+      // Manejo de id / folio
+      if ('id' in updates) {
+        if (updates.id) {
+          url.searchParams.set('id', updates.id);
+          url.searchParams.delete('folio');
+        } else {
+          url.searchParams.delete('id');
+          url.searchParams.delete('folio');
+        }
+      }
+
+      // Manejo de pestaña activa
+      if ('tab' in updates) {
+        if (updates.tab && updates.tab !== 'dashboard') {
+          url.searchParams.set('tab', updates.tab);
+        } else {
+          url.searchParams.delete('tab');
+        }
+      }
+
+      // Manejo de modal nueva incidencia
+      if ('nuevo' in updates) {
+        if (updates.nuevo) {
+          url.searchParams.set('nuevo', '1');
+        } else {
+          url.searchParams.delete('nuevo');
+          url.searchParams.delete('nueva');
+          url.searchParams.delete('modal');
+        }
+      }
+
+      const queryString = url.searchParams.toString();
+      const targetUrl = url.pathname + (queryString ? `?${queryString}` : '');
+
+      if (updates.push) {
+        window.history.pushState({}, '', targetUrl);
+      } else {
+        window.history.replaceState({}, '', targetUrl);
+      }
+    } catch {
+      // Ignorar fallos de manipulación de URL
+    }
+  };
+
+  const handleOpenIncident = (codigoOrObj) => {
+    const code =
+      typeof codigoOrObj === 'object' && codigoOrObj !== null
+        ? codigoOrObj.codigo || codigoOrObj.codigo_unico || codigoOrObj._id
+        : codigoOrObj;
+    if (!code) return;
+    setSelectedCodigo(code);
+    syncUrlParams({ id: code, push: true });
+  };
+
+  const handleCloseIncident = () => {
+    setSelectedCodigo(null);
+    syncUrlParams({ id: null });
+  };
+
+  const handleOpenNewModal = () => {
+    setIsNewModalOpen(true);
+    syncUrlParams({ nuevo: true, push: true });
+  };
+
+  const handleCloseNewModal = () => {
+    setIsNewModalOpen(false);
+    syncUrlParams({ nuevo: false });
+  };
+
+  const handleNavChange = (nav) => {
+    setActiveNav(nav);
+    syncUrlParams({ tab: nav });
+  };
+
+  // Leer y sincronizar parámetros de la URL al cargar la página o navegar con el historial
+  useEffect(() => {
+    const applyUrlState = () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const idParam = params.get('id') || params.get('folio');
+        const tabParam = params.get('tab');
+        const nuevoParam =
+          params.get('nuevo') || params.get('nueva') || params.get('modal') === 'nuevo';
+
+        if (idParam) {
+          setSelectedCodigo(idParam);
+        } else {
+          setSelectedCodigo(null);
+        }
+
+        if (tabParam && ['dashboard', 'analitica', 'catalogos'].includes(tabParam)) {
+          setActiveNav(tabParam);
+        }
+
+        if (nuevoParam === '1' || nuevoParam === 'true') {
+          setIsNewModalOpen(true);
+        } else {
+          setIsNewModalOpen(false);
+        }
+      } catch {
+        // Ignorar
+      }
+    };
+
+    applyUrlState();
+    window.addEventListener('popstate', applyUrlState);
+    return () => window.removeEventListener('popstate', applyUrlState);
+  }, []);
+
   const [filters, setFilters] = useState({
     categoria: 'todas',
     estado: 'todos',
@@ -103,9 +219,9 @@ export default function App() {
           incidencias={incidencias}
           estadisticas={estadisticas}
           loading={loading}
-          onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+          onSelectIncidencia={handleOpenIncident}
           onRefresh={loadIncidencias}
-          onOpenNewModal={() => setIsNewModalOpen(true)}
+          onOpenNewModal={handleOpenNewModal}
           defaultTab="usuarios"
         />
       );
@@ -118,9 +234,9 @@ export default function App() {
             incidencias={incidencias}
             estadisticas={estadisticas}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onSelectIncidencia={handleOpenIncident}
             onRefresh={loadIncidencias}
-            onOpenNewModal={() => setIsNewModalOpen(true)}
+            onOpenNewModal={handleOpenNewModal}
             onSeedData={handleSeedData}
             isSeeding={isSeeding}
           />
@@ -130,8 +246,8 @@ export default function App() {
           <ReportanteDashboard
             incidencias={incidencias}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
-            onOpenNewModal={() => setIsNewModalOpen(true)}
+            onSelectIncidencia={handleOpenIncident}
+            onOpenNewModal={handleOpenNewModal}
           />
         );
       case 'tecnico':
@@ -139,7 +255,7 @@ export default function App() {
           <TecnicoDashboard
             incidencias={incidencias}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onSelectIncidencia={handleOpenIncident}
             onRefresh={loadIncidencias}
           />
         );
@@ -149,10 +265,10 @@ export default function App() {
             incidencias={incidencias}
             estadisticas={estadisticas}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onSelectIncidencia={handleOpenIncident}
             onRefresh={loadIncidencias}
-            onOpenNewModal={() => setIsNewModalOpen(true)}
-            onNavigateToAnalitica={() => setActiveNav('analitica')}
+            onOpenNewModal={handleOpenNewModal}
+            onNavigateToAnalitica={() => handleNavChange('analitica')}
           />
         );
       case 'directivo':
@@ -163,9 +279,9 @@ export default function App() {
             incidencias={incidencias}
             estadisticas={estadisticas}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onSelectIncidencia={handleOpenIncident}
             onRefresh={loadIncidencias}
-            onOpenNewModal={() => setIsNewModalOpen(true)}
+            onOpenNewModal={handleOpenNewModal}
           />
         );
       default:
@@ -176,7 +292,7 @@ export default function App() {
             filters={filters}
             onFilterChange={handleFilterChange}
             loading={loading}
-            onSelectIncidencia={(inc) => setSelectedCodigo(inc.codigo)}
+            onSelectIncidencia={handleOpenIncident}
             onSeedData={handleSeedData}
             isSeeding={isSeeding}
           />
@@ -187,13 +303,13 @@ export default function App() {
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-slate-100 flex flex-col font-sans text-slate-800">
       <Navbar
-        onOpenNewModal={() => setIsNewModalOpen(true)}
+        onOpenNewModal={handleOpenNewModal}
         onSeedData={handleSeedData}
         isSeeding={isSeeding}
         onRefresh={loadIncidencias}
         activeNav={activeNav}
-        onChangeNav={(nav) => setActiveNav(nav)}
-        onTrackFolio={(folio) => setSelectedCodigo(folio)}
+        onChangeNav={handleNavChange}
+        onTrackFolio={handleOpenIncident}
       />
 
       <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -222,7 +338,7 @@ export default function App() {
       {selectedCodigo && (
         <IncidentDetailModal
           codigo={selectedCodigo}
-          onClose={() => setSelectedCodigo(null)}
+          onClose={handleCloseIncident}
           onIncidentUpdated={loadIncidencias}
         />
       )}
@@ -230,7 +346,7 @@ export default function App() {
       {isNewModalOpen && (
         <NewIncidentModal
           isOpen={isNewModalOpen}
-          onClose={() => setIsNewModalOpen(false)}
+          onClose={handleCloseNewModal}
           onIncidentCreated={loadIncidencias}
         />
       )}

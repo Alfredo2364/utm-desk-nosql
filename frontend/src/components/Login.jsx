@@ -18,7 +18,23 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
-  const [showRecoveryModal, setShowRecoveryModal] = useState(false);
+  const [showRecoveryModal, setShowRecoveryModal] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('recuperar');
+      return p === '1' || p === 'true';
+    }
+    return false;
+  });
+
+  const toggleRecovery = (open) => {
+    setShowRecoveryModal(open);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (open) url.searchParams.set('recuperar', '1');
+      else url.searchParams.delete('recuperar');
+      window.history.replaceState({}, '', url.pathname + (url.searchParams.toString() ? `?${url.searchParams.toString()}` : ''));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,7 +120,7 @@ export default function Login() {
                 <label className="text-slate-300 font-medium">Contraseña *</label>
                 <button
                   type="button"
-                  onClick={() => setShowRecoveryModal(true)}
+                  onClick={() => toggleRecovery(true)}
                   className="text-[10px] text-emerald-400 hover:text-emerald-300 hover:underline font-mono cursor-pointer"
                 >
                   ¿Olvidaste tu contraseña?
@@ -166,7 +182,7 @@ export default function Login() {
 
       {showRecoveryModal && (
         <PasswordRecoveryModal
-          onClose={() => setShowRecoveryModal(false)}
+          onClose={() => toggleRecovery(false)}
           onSuccessReset={(resetEmail, newPass) => {
             setEmail(resetEmail);
             setPassword(newPass);

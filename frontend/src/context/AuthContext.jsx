@@ -75,10 +75,18 @@ export function AuthProvider({ children }) {
   const [usuariosDemo, setUsuariosDemo] = useState(DEFAULT_USUARIOS_DEMO);
   const [authLoading, setAuthLoading] = useState(false);
 
-  // Usuario activo autenticado: siempre inicia en null para mostrar la pantalla de Login al abrir la app
+  // Usuario activo autenticado: se mantiene la sesión abierta permanentemente hasta que se dé logout explícito
   const [currentUser, setCurrentUser] = useState(() => {
-    localStorage.removeItem('utm_desk_user');
-    localStorage.removeItem('utm_desk_token');
+    try {
+      const savedUser = localStorage.getItem('utm_desk_user');
+      if (savedUser) {
+        return JSON.parse(savedUser);
+      }
+    } catch {
+      // fallback si el json estuviera corrupto
+      localStorage.removeItem('utm_desk_user');
+      localStorage.removeItem('utm_desk_token');
+    }
     return null;
   });
 

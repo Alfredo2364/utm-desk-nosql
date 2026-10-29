@@ -32,7 +32,46 @@ export default function SuperAdminDashboard({
   isSeeding,
 }) {
   const { currentUser, usuariosDemo } = useAuth();
-  const [superTab, setSuperTab] = useState('global'); // 'global' | 'admin_catalogos' | 'analitica' | 'simulador_roles'
+  const [superTab, setSuperTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('tab');
+      if (p === 'catalogos' || p === 'admin_catalogos') return 'admin_catalogos';
+      if (p === 'analitica') return 'analitica';
+      if (p === 'simulador' || p === 'simulador_roles') return 'simulador_roles';
+    }
+    return 'global';
+  });
+
+  const changeSuperTab = (t) => {
+    setSuperTab(t);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      if (t === 'global') {
+        url.searchParams.delete('tab');
+      } else if (t === 'admin_catalogos') {
+        url.searchParams.set('tab', 'catalogos');
+      } else if (t === 'simulador_roles') {
+        url.searchParams.set('tab', 'simulador');
+      } else {
+        url.searchParams.set('tab', t);
+      }
+      const qs = url.searchParams.toString();
+      window.history.replaceState({}, '', url.pathname + (qs ? `?${qs}` : ''));
+    }
+  };
+
+  React.useEffect(() => {
+    const handlePop = () => {
+      if (typeof window === 'undefined') return;
+      const p = new URLSearchParams(window.location.search).get('tab');
+      if (p === 'catalogos' || p === 'admin_catalogos') setSuperTab('admin_catalogos');
+      else if (p === 'analitica') setSuperTab('analitica');
+      else if (p === 'simulador' || p === 'simulador_roles') setSuperTab('simulador_roles');
+      else setSuperTab('global');
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
   const [simulatedRoleView, setSimulatedRoleView] = useState('reportante');
   const [selectedIncidenciaAsignar, setSelectedIncidenciaAsignar] = useState(null);
   const [updatingCode, setUpdatingCode] = useState(null);
@@ -153,7 +192,7 @@ export default function SuperAdminDashboard({
         {/* Pestañas de Navegación del Super Admin (Ensanchadas en Grid uniforme) */}
         <div className="mt-5 pt-4 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
           <button
-            onClick={() => setSuperTab('global')}
+            onClick={() => changeSuperTab('global')}
             className={`px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               superTab === 'global'
                 ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
@@ -165,7 +204,7 @@ export default function SuperAdminDashboard({
           </button>
 
           <button
-            onClick={() => setSuperTab('admin_catalogos')}
+            onClick={() => changeSuperTab('admin_catalogos')}
             className={`px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               superTab === 'admin_catalogos'
                 ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
@@ -177,7 +216,7 @@ export default function SuperAdminDashboard({
           </button>
 
           <button
-            onClick={() => setSuperTab('analitica')}
+            onClick={() => changeSuperTab('analitica')}
             className={`px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               superTab === 'analitica'
                 ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
@@ -189,7 +228,7 @@ export default function SuperAdminDashboard({
           </button>
 
           <button
-            onClick={() => setSuperTab('simulador_roles')}
+            onClick={() => changeSuperTab('simulador_roles')}
             className={`px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               superTab === 'simulador_roles'
                 ? 'bg-amber-500 text-slate-950 font-bold shadow-sm'
