@@ -1,4 +1,5 @@
 const Incidencia = require('../models/Incidencia');
+const Usuario = require('../models/Usuario');
 const { uploadEvidenceToSupabase } = require('../config/supabase');
 const { normalizarAreaTecnica } = require('../middlewares/auth');
 
@@ -695,7 +696,29 @@ const addRevision = async (req, res, next) => {
 const asignarTecnico = async (req, res, next) => {
   try {
     const { codigo } = req.params;
-    const { tecnicoId, nombre, email, id_tecnico, area } = req.body;
+    let tecnicoId = req.body.tecnicoId || req.body.tecnico_id;
+    let nombre = req.body.nombre || req.body.tecnico_nombre || req.body.name;
+    let email = req.body.email || req.body.tecnico_email;
+    let id_tecnico = req.body.id_tecnico || req.body.tecnico_codigo;
+    let area = req.body.area || req.body.tecnico_area;
+
+    // Si viene email pero faltan otros campos, buscar en la colección de usuarios
+    if (email && (!nombre || !tecnicoId || !area)) {
+      try {
+        const cleanEmail = email.trim().toLowerCase();
+        const u = await Usuario.findOne({
+          $or: [{ email: cleanEmail }, { correo: cleanEmail }],
+        });
+        if (u) {
+          tecnicoId = tecnicoId || u._id;
+          nombre = nombre || u.nombre;
+          area = area || u.area;
+          id_tecnico = id_tecnico || u.id_tecnico || 'TEC-UTM';
+        }
+      } catch (err) {
+        // continuar con los datos recibidos
+      }
+    }
 
     if (!email && !nombre && !tecnicoId) {
       return res.status(400).json({
@@ -713,8 +736,7 @@ const asignarTecnico = async (req, res, next) => {
     }
 
     const ahora = new Date();
-    incidencia.asignadoA = tecnicoId || null;
-    incidencia.tecnico_asignado = {
+    const tecnicoAsignado = {
       id: tecnicoId || null,
       nombre: nombre || 'Técnico Especialista',
       email: (email || '').toLowerCase(),
@@ -725,13 +747,11 @@ const asignarTecnico = async (req, res, next) => {
     };
 
     const estadoPrevio = incidencia.estado;
-    if (incidencia.estado === 'abierta') {
-      incidencia.estado = 'asignada';
-    }
+    const nuevoEstado = incidencia.estado === 'abierta' ? 'asignada' : incidencia.estado;
 
-    const notaAsignacion = `Ticket asignado al técnico ${incidencia.tecnico_asignado.nombre} (${incidencia.tecnico_asignado.email}) por ${req.user?.nombre || 'Supervisión'}.`;
+    const notaAsignacion = `Ticket asignado al técnico ${tecnicoAsignado.nombre} (${tecnicoAsignado.email}) por ${req.user?.nombre || 'Supervisión'}.`;
 
-    incidencia.revisiones.push({
+    const nuevaRevision = {
       tecnicoId: req.user?._id || null,
       fecha: ahora,
       fecha_revision: ahora,
@@ -744,18 +764,33 @@ const asignarTecnico = async (req, res, next) => {
       diagnostico: notaAsignacion,
       estadoAnterior: estadoPrevio,
       estado_anterior: estadoPrevio,
-      estadoNuevo: incidencia.estado,
-      estado_asignado: incidencia.estado,
+      estadoNuevo: nuevoEstado,
+      estado_asignado: nuevoEstado,
       accion_realizada: 'Asignación de técnico responsable',
       observaciones: '',
-    });
+    };
 
-    await incidencia.save();
+    const updateOps = {
+      $set: {
+        asignadoA: tecnicoId || null,
+        tecnico_asignado: tecnicoAsignado,
+        estado: nuevoEstado,
+      },
+      $push: {
+        revisiones: nuevaRevision,
+      },
+    };
+
+    const incidenciaActualizada = await Incidencia.findOneAndUpdate(
+      { _id: incidencia._id },
+      updateOps,
+      { new: true, runValidators: true }
+    );
 
     return res.status(200).json({
       ok: true,
-      mensaje: `Incidencia ${incidencia.codigo} asignada a ${incidencia.tecnico_asignado.nombre}`,
-      incidencia,
+      mensaje: `Incidencia ${incidencia.codigo} asignada a ${tecnicoAsignado.nombre}`,
+      incidencia: incidenciaActualizada,
     });
   } catch (error) {
     next(error);

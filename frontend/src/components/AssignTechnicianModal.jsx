@@ -30,9 +30,13 @@ export default function AssignTechnicianModal({
 
     try {
       await asignarTecnico(incidencia.codigo, {
+        tecnicoId: tec._id,
         tecnico_id: tec._id,
+        nombre: tec.nombre,
         tecnico_nombre: tec.nombre,
+        email: tec.email,
         tecnico_email: tec.email,
+        area: tec.area,
         tecnico_area: tec.area,
         id_tecnico: tec.id_tecnico || 'TEC-UTM',
       });
