@@ -1,10 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
 const { optimizeEvidenceBuffer } = require('../utils/imageOptimizer');
 
-const rawUrl = process.env.SUPABASE_URL || '';
+const rawUrl =
+  process.env.SUPABASE_URL ||
+  'https://erydjtmptehenarneuqz.supabase.co';
 // Sanitizar URL eliminando rutas secundarias como /rest/v1/ o barras finales
 const supabaseUrl = rawUrl.trim().replace(/\/rest\/v1\/?$/, '').replace(/\/+$/, '');
-const supabaseKey = (process.env.SUPABASE_SERVICE_KEY || '').trim();
+const supabaseKey = (
+  process.env.SUPABASE_SERVICE_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyeWRqdG1wdGVoZW5hcm5ldXF6Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjU5MDUyMywiZXhwIjoyMTA4MTY2NTIzfQ.Ii3MLtwCGfpH1KrXwa5qt_VdrIkKT-RdGzI9zYGaZbk'
+).trim();
 const defaultBucket = process.env.SUPABASE_BUCKET || 'evidencias-campus';
 
 let supabase = null;

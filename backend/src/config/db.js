@@ -76,7 +76,10 @@ const connectDB = async () => {
     return true;
   }
 
-  const mongoURI = process.env.MONGO_URI || process.env.MONGODB_URI;
+  const mongoURI =
+    process.env.MONGO_URI ||
+    process.env.MONGODB_URI ||
+    'mongodb+srv://argentmoon221_db_user:kbdWSABdFdJXxRNi@cluster0.z7fflwr.mongodb.net/utm_desk_db?retryWrites=true&w=majority';
 
   if (!mongoURI || mongoURI.includes('tu_usuario')) {
     console.warn('⚠️ [MongoDB] MONGO_URI no configurado. Operando con base de datos en memoria.');

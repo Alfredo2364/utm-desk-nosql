@@ -82,9 +82,20 @@ const buscarPorCodigo = async (rawCodigo) => {
   const raw = String(rawCodigo).trim();
   const upper = raw.toUpperCase();
 
-  // 1. Coincidencia exacta directa
-  let inc = await Incidencia.findOne({ codigo: upper });
+  // 1. Coincidencia exacta directa por 'codigo' o 'codigo_unico'
+  let inc = await Incidencia.findOne({
+    $or: [{ codigo: upper }, { codigo_unico: upper }],
+  });
   if (inc) return inc;
+
+  // 1.1 Si contiene espacios, normalizar con guiones (ej. "INC 2026 0011" -> "INC-2026-0011")
+  const conGuiones = upper.replace(/\s+/g, '-');
+  if (conGuiones !== upper) {
+    inc = await Incidencia.findOne({
+      $or: [{ codigo: conGuiones }, { codigo_unico: conGuiones }],
+    });
+    if (inc) return inc;
+  }
 
   // 2. Prefijo alternativo UTM- <-> INC-
   const alt = upper.startsWith('UTM-')
@@ -93,7 +104,9 @@ const buscarPorCodigo = async (rawCodigo) => {
     ? upper.replace(/^INC-/, 'UTM-')
     : null;
   if (alt) {
-    inc = await Incidencia.findOne({ codigo: alt });
+    inc = await Incidencia.findOne({
+      $or: [{ codigo: alt }, { codigo_unico: alt }],
+    });
     if (inc) return inc;
   }
 
@@ -110,7 +123,7 @@ const buscarPorCodigo = async (rawCodigo) => {
     }
   }
 
-  // 4. Búsqueda por número puro al final (ej. "1", "6", "0001", "0006")
+  // 4. Búsqueda por número puro al final (ej. "1", "6", "11", "0011")
   const numMatch = raw.match(/\d+$/);
   if (numMatch) {
     const padded = numMatch[0].padStart(4, '0');
