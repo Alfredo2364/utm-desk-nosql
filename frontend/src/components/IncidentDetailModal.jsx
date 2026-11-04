@@ -56,8 +56,8 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     }
   };
 
-  const fetchDossier = async () => {
-    setLoading(true);
+  const fetchDossier = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     setError(null);
     try {
       const data = await getIncidenciaByCodigo(codigo);
@@ -65,13 +65,13 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     } catch (err) {
       setError(err.message || 'Error al obtener el expediente completo.');
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
     if (codigo) {
-      fetchDossier();
+      fetchDossier(true);
       // Garantizar que la URL refleje inmediatamente ?id=<codigo>
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
@@ -98,7 +98,7 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     setIsSubmittingReview(true);
     try {
       await addRevision(codigo, reviewData);
-      await fetchDossier();
+      await fetchDossier(false);
       if (onIncidentUpdated) onIncidentUpdated();
     } catch (err) {
       alert(`Error al guardar revisión: ${err.message}`);
@@ -111,7 +111,7 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
     setChangingStatus(true);
     try {
       await patchEstado(codigo, nuevoEstado, `Transición a ${nuevoEstado} por ${currentUser.nombre}`);
-      await fetchDossier();
+      await fetchDossier(false);
       if (onIncidentUpdated) onIncidentUpdated();
     } catch (err) {
       alert(`Error: ${err.message}`);
@@ -121,7 +121,7 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
   };
 
   const handleEvidenceUploaded = async () => {
-    await fetchDossier();
+    await fetchDossier(false);
     if (onIncidentUpdated) onIncidentUpdated();
   };
 

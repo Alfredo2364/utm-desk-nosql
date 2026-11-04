@@ -18,27 +18,6 @@ if (supabaseUrl && supabaseKey && !supabaseUrl.includes('tu-proyecto')) {
       },
     });
     console.log('✅ [Supabase Storage] Cliente inicializado correctamente.');
-    
-    // Asegurar que el bucket privado exista en Supabase
-    (async () => {
-      try {
-        const { data: buckets, error } = await supabase.storage.listBuckets();
-        if (!error && buckets) {
-          const exists = buckets.some((b) => b.name === defaultBucket);
-          if (!exists) {
-            console.log(`📦 [Supabase Storage] Creando bucket privado '${defaultBucket}'...`);
-            await supabase.storage.createBucket(defaultBucket, {
-              public: false,
-            });
-            console.log(`✅ [Supabase Storage] Bucket '${defaultBucket}' creado exitosamente.`);
-          } else {
-            console.log(`✅ [Supabase Storage] Bucket '${defaultBucket}' listo y accesible.`);
-          }
-        }
-      } catch (e) {
-        console.warn(`⚠️ [Supabase Storage] Verificación inicial de bucket: ${e.message}`);
-      }
-    })();
   } catch (err) {
     console.error('❌ [Supabase Storage] Error al inicializar cliente:', err.message);
   }

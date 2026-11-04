@@ -11,8 +11,10 @@ import {
   Shield,
 } from 'lucide-react';
 import { uploadEvidencia } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
+  const { currentUser } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [subidoPor, setSubidoPor] = useState('');
@@ -93,10 +95,11 @@ export default function EvidenceUploader({ codigo, onEvidenceUploaded }) {
     setSuccessMsg(null);
 
     try {
+      const nombreAdjunta = subidoPor.trim() || currentUser?.nombre || 'Integrante Comunidad UTM';
       const result = await uploadEvidencia(
         codigo,
         selectedFile,
-        subidoPor.trim() || 'Técnico Campus'
+        nombreAdjunta
       );
 
       const ahorro = result.evidencia?.ahorro_compresion;

@@ -114,14 +114,14 @@ export async function createIncidencia(incidenciaData, customHeaders = null) {
  * Campo del archivo: 'archivo'
  */
 export async function uploadEvidencia(codigo, file, subidoPor = 'Usuario Campus', customHeaders = null) {
-  const MAX_BYTES = 5 * 1024 * 1024;
+  const MAX_BYTES = 10 * 1024 * 1024;
   if (file.size > MAX_BYTES) {
-    throw new Error('El archivo excede el tamaño máximo permitido de 5MB');
+    throw new Error('El archivo excede el tamaño máximo permitido de 10MB');
   }
 
-  const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+  const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'];
   if (!validTypes.includes(file.type)) {
-    throw new Error('Tipo de archivo no permitido. Solo se aceptan imágenes JPG, PNG y documentos PDF.');
+    throw new Error('Tipo de archivo no permitido. Solo se aceptan imágenes JPG, PNG, WEBP y documentos PDF.');
   }
 
   const formData = new FormData();
@@ -130,20 +130,46 @@ export async function uploadEvidencia(codigo, file, subidoPor = 'Usuario Campus'
 
   const headers = customHeaders || getStoredHeaders();
 
-  const response = await fetch(`${API_BASE_URL}/incidencias/${codigo}/evidencias/archivo`, {
-    method: 'POST',
-    headers: {
-      ...headers,
-    },
-    body: formData,
-  });
+  let lastError = null;
+  // Reintento automático de hasta 3 intentos para absorber cold-starts o retrasos en promesas de red
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/incidencias/${codigo}/evidencias/archivo`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+        },
+        body: formData,
+      });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || 'Error al subir la evidencia a Supabase Storage');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        // Si es un error de permisos o validación 4xx, no reintentar y propagar mensaje exacto
+        if (response.status >= 400 && response.status < 500) {
+          throw new Error(errorData.error || 'Error al subir la evidencia');
+        }
+        throw new Error(errorData.error || `Error del servidor (${response.status})`);
+      }
+
+      return await response.json();
+    } catch (err) {
+      lastError = err;
+      // Si es error 4xx de validación o permisos (no relacionado a fetch/red), lanzar inmediatamente
+      if (
+        err.message &&
+        !err.message.toLowerCase().includes('fetch') &&
+        !err.message.includes('servidor')
+      ) {
+        throw err;
+      }
+      // Si falló por red/fetch, esperar breve pausa antes del siguiente intento
+      if (attempt < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
   }
 
-  return await response.json();
+  throw lastError || new Error('Error al subir la evidencia a Supabase Storage');
 }
 
 /**
