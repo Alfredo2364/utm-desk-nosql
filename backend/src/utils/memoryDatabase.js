@@ -406,6 +406,8 @@ function patchMongooseModel(Model, colName) {
     findOne: Model.findOne.bind(Model),
     findById: Model.findById.bind(Model),
     findByIdAndUpdate: Model.findByIdAndUpdate.bind(Model),
+    findOneAndUpdate: Model.findOneAndUpdate ? Model.findOneAndUpdate.bind(Model) : null,
+    updateOne: Model.updateOne ? Model.updateOne.bind(Model) : null,
     findByIdAndDelete: Model.findByIdAndDelete.bind(Model),
     countDocuments: Model.countDocuments.bind(Model),
     exists: Model.exists.bind(Model),
@@ -443,13 +445,65 @@ function patchMongooseModel(Model, colName) {
     const target = store[colName][idx];
     const cleanUpdate = { ...(update.$set || update) };
     delete cleanUpdate.$set;
+    delete cleanUpdate.$push;
     Object.entries(cleanUpdate).forEach(([k, v]) => {
       if (v !== undefined) target[k] = v;
     });
+    if (update.$push) {
+      Object.entries(update.$push).forEach(([k, v]) => {
+        if (!Array.isArray(target[k])) target[k] = [];
+        target[k].push(v);
+      });
+    }
     target.updatedAt = new Date();
-    const wrapped = wrapDocument(target.toObject(), colName);
+    const wrapped = wrapDocument(target.toObject ? target.toObject() : target, colName);
     store[colName][idx] = wrapped;
     return createQueryChain(wrapped);
+  };
+
+  Model.findOneAndUpdate = function (filter = {}, update = {}, options = {}) {
+    if (!useMem()) return orig.findOneAndUpdate(filter, update, options);
+    const idx = store[colName].findIndex((d) => matchesFilter(d, filter));
+    if (idx === -1) return createQueryChain(null);
+    const target = store[colName][idx];
+    const cleanUpdate = { ...(update.$set || update) };
+    delete cleanUpdate.$set;
+    delete cleanUpdate.$push;
+    Object.entries(cleanUpdate).forEach(([k, v]) => {
+      if (v !== undefined) target[k] = v;
+    });
+    if (update.$push) {
+      Object.entries(update.$push).forEach(([k, v]) => {
+        if (!Array.isArray(target[k])) target[k] = [];
+        target[k].push(v);
+      });
+    }
+    target.updatedAt = new Date();
+    const wrapped = wrapDocument(target.toObject ? target.toObject() : target, colName);
+    store[colName][idx] = wrapped;
+    return createQueryChain(wrapped);
+  };
+
+  Model.updateOne = async function (filter = {}, update = {}, options = {}) {
+    if (!useMem()) return orig.updateOne(filter, update, options);
+    const idx = store[colName].findIndex((d) => matchesFilter(d, filter));
+    if (idx === -1) return { matchedCount: 0, modifiedCount: 0 };
+    const target = store[colName][idx];
+    const cleanUpdate = { ...(update.$set || update) };
+    delete cleanUpdate.$set;
+    delete cleanUpdate.$push;
+    Object.entries(cleanUpdate).forEach(([k, v]) => {
+      if (v !== undefined) target[k] = v;
+    });
+    if (update.$push) {
+      Object.entries(update.$push).forEach(([k, v]) => {
+        if (!Array.isArray(target[k])) target[k] = [];
+        target[k].push(v);
+      });
+    }
+    target.updatedAt = new Date();
+    store[colName][idx] = wrapDocument(target.toObject ? target.toObject() : target, colName);
+    return { matchedCount: 1, modifiedCount: 1, acknowledged: true };
   };
 
   Model.findByIdAndDelete = async function (id) {

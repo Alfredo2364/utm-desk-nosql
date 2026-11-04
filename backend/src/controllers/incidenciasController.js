@@ -790,7 +790,7 @@ const asignarTecnico = async (req, res, next) => {
     return res.status(200).json({
       ok: true,
       mensaje: `Incidencia ${incidencia.codigo} asignada a ${tecnicoAsignado.nombre}`,
-      incidencia: incidenciaActualizada,
+      incidencia: incidenciaActualizada || incidencia,
     });
   } catch (error) {
     next(error);

@@ -5,6 +5,9 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { initializeMemoryFallback } = require('../utils/memoryDatabase');
 
+// Desactivar buffering para evitar cuelgues de 10000ms en serverless
+mongoose.set('bufferCommands', false);
+
 // Configurar servidores DNS públicos (Google / Cloudflare) en entornos locales Windows
 if (!process.env.VERCEL) {
   try {
