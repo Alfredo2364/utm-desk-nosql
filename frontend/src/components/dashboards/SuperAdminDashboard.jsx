@@ -541,7 +541,12 @@ export default function SuperAdminDashboard({
           incidencia={selectedIncidenciaAsignar}
           usuariosDemo={usuariosDemo}
           onClose={() => setSelectedIncidenciaAsignar(null)}
-          onAssigned={() => {
+          onAssigned={(updatedDoc) => {
+            if (updatedDoc && updatedDoc.codigo && typeof setIncidencias === 'function') {
+              setIncidencias((prev) =>
+                prev.map((item) => (item.codigo === updatedDoc.codigo ? { ...item, ...updatedDoc } : item))
+              );
+            }
             setSelectedIncidenciaAsignar(null);
             if (onRefresh) onRefresh();
           }}

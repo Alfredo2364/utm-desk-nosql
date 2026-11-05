@@ -110,7 +110,10 @@ export default function AdminDashboard({
     e.preventDefault();
     try {
       if (editingUser) {
-        await updateUsuario(editingUser._id, userFormData);
+        await updateUsuario(editingUser._id || editingUser.email, {
+          ...userFormData,
+          _id: editingUser._id,
+        });
       } else {
         await createUsuario(userFormData);
       }

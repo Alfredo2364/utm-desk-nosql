@@ -17,8 +17,34 @@ const PORT = process.env.PORT || 5000;
 
 // Middlewares globales
 app.use(cors());
+
+// Soporte Serverless (Vercel): preservar req.body si ya viene pre-parseado
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    req._body = true;
+  }
+  next();
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Soporte Serverless: deserializar req.body si viene como JSON string o Buffer
+app.use((req, res, next) => {
+  if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
+    try {
+      req.body = JSON.parse(req.body);
+      req._body = true;
+    } catch (e) {}
+  } else if (Buffer.isBuffer(req.body)) {
+    try {
+      req.body = JSON.parse(req.body.toString('utf-8'));
+      req._body = true;
+    } catch (e) {}
+  }
+  next();
+});
+
 if (!process.env.VERCEL) {
   app.use(morgan('dev'));
 }

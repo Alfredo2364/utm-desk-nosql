@@ -273,7 +273,13 @@ export default function SupervisorDashboard({
           onClose={() => setSelectedIncidenciaParaAsignar(null)}
           incidencia={selectedIncidenciaParaAsignar}
           usuariosDemo={usuariosDemo}
-          onAssigned={() => {
+          onAssigned={(updatedDoc) => {
+            if (updatedDoc && updatedDoc.codigo && typeof setIncidencias === 'function') {
+              setIncidencias((prev) =>
+                prev.map((item) => (item.codigo === updatedDoc.codigo ? { ...item, ...updatedDoc } : item))
+              );
+            }
+            setSelectedIncidenciaParaAsignar(null);
             if (onRefresh) onRefresh();
           }}
         />

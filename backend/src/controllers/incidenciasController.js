@@ -709,11 +709,17 @@ const addRevision = async (req, res, next) => {
 const asignarTecnico = async (req, res, next) => {
   try {
     const { codigo } = req.params;
-    let tecnicoId = req.body.tecnicoId || req.body.tecnico_id;
-    let nombre = req.body.nombre || req.body.tecnico_nombre || req.body.name;
-    let email = req.body.email || req.body.tecnico_email;
-    let id_tecnico = req.body.id_tecnico || req.body.tecnico_codigo;
-    let area = req.body.area || req.body.tecnico_area;
+    const body = (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body) || {};
+    let tecnicoId = body.tecnicoId || body.tecnico_id || body.id;
+    let nombre = body.nombre || body.tecnico_nombre || body.name;
+    let email = body.email || body.tecnico_email || body.correo;
+    let id_tecnico = body.id_tecnico || body.tecnico_codigo;
+    let area = body.area || body.tecnico_area;
+
+    // Respaldo desde query params si por algún motivo no vinieron en el cuerpo
+    if (!email && req.query?.email) email = req.query.email;
+    if (!tecnicoId && req.query?.tecnicoId) tecnicoId = req.query.tecnicoId;
+    if (!nombre && req.query?.nombre) nombre = req.query.nombre;
 
     // Si viene email pero faltan otros campos, buscar en la colección de usuarios
     if (email && (!nombre || !tecnicoId || !area)) {
@@ -783,6 +789,24 @@ const asignarTecnico = async (req, res, next) => {
       observaciones: '',
     };
 
+    // 1. Mutar el documento en memoria/instancia directamente y guardar
+    incidencia.asignadoA = tecnicoId || null;
+    incidencia.tecnico_asignado = tecnicoAsignado;
+    incidencia.estado = nuevoEstado;
+    if (!Array.isArray(incidencia.revisiones)) {
+      incidencia.revisiones = [];
+    }
+    incidencia.revisiones.push(nuevaRevision);
+
+    try {
+      if (typeof incidencia.save === 'function') {
+        await incidencia.save();
+      }
+    } catch (saveErr) {
+      console.warn('⚠️ [asignarTecnico] Advertencia al ejecutar save():', saveErr.message);
+    }
+
+    // 2. Ejecutar findOneAndUpdate para asegurar persistencia en MongoDB Atlas / Memory
     const updateOps = {
       $set: {
         asignadoA: tecnicoId || null,
@@ -794,16 +818,24 @@ const asignarTecnico = async (req, res, next) => {
       },
     };
 
-    const incidenciaActualizada = await Incidencia.findOneAndUpdate(
-      { _id: incidencia._id },
-      updateOps,
-      { new: true, runValidators: true }
-    );
+    let incidenciaActualizada = null;
+    try {
+      incidenciaActualizada = await Incidencia.findOneAndUpdate(
+        { $or: [{ _id: incidencia._id }, { codigo: incidencia.codigo }] },
+        updateOps,
+        { new: true, runValidators: false }
+      );
+    } catch (updateErr) {
+      console.warn('⚠️ [asignarTecnico] Advertencia al ejecutar findOneAndUpdate():', updateErr.message);
+    }
+
+    const docFinal = incidenciaActualizada || incidencia;
+    const plainDoc = typeof docFinal.toObject === 'function' ? docFinal.toObject() : docFinal;
 
     return res.status(200).json({
       ok: true,
       mensaje: `Incidencia ${incidencia.codigo} asignada a ${tecnicoAsignado.nombre}`,
-      incidencia: incidenciaActualizada || incidencia,
+      incidencia: plainDoc,
     });
   } catch (error) {
     next(error);

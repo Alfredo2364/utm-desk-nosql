@@ -16,32 +16,38 @@ export default function AssignTechnicianModal({
   if (!isOpen || !incidencia) return null;
 
   // Filtrar solo usuarios con rol 'tecnico'
-  const tecnicos = usuariosDemo.filter((u) => u.rol === 'tecnico');
+  const tecnicos = (usuariosDemo || []).filter(
+    (u) => (u.rol || '').toLowerCase() === 'tecnico'
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedEmail) return;
 
-    const tec = tecnicos.find((t) => t.email.toLowerCase() === selectedEmail.toLowerCase());
+    const tec = tecnicos.find((t) => {
+      const mail = (t.email || t.correo || '').toLowerCase().trim();
+      return mail === selectedEmail.toLowerCase().trim();
+    });
     if (!tec) return;
 
     setLoading(true);
     setError(null);
 
+    const emailToSend = tec.email || tec.correo;
     try {
-      await asignarTecnico(incidencia.codigo, {
+      const resp = await asignarTecnico(incidencia.codigo, {
         tecnicoId: tec._id,
         tecnico_id: tec._id,
         nombre: tec.nombre,
         tecnico_nombre: tec.nombre,
-        email: tec.email,
-        tecnico_email: tec.email,
+        email: emailToSend,
+        tecnico_email: emailToSend,
         area: tec.area,
         tecnico_area: tec.area,
         id_tecnico: tec.id_tecnico || 'TEC-UTM',
       });
 
-      if (onAssigned) onAssigned();
+      if (onAssigned) onAssigned(resp?.incidencia || resp);
       onClose();
     } catch (err) {
       setError(err.message || 'Error al asignar técnico');
@@ -102,32 +108,35 @@ export default function AssignTechnicianModal({
               Seleccionar Agente Especialista *
             </label>
             <div className="space-y-1.5">
-              {tecnicos.map((tec) => (
-                <label
-                  key={tec.email}
-                  className={`flex items-start space-x-2.5 p-2.5 rounded-md border cursor-pointer transition-all ${
-                    selectedEmail === tec.email
-                      ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
-                      : 'border-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="tecnico"
-                    value={tec.email}
-                    checked={selectedEmail === tec.email}
-                    onChange={(e) => setSelectedEmail(e.target.value)}
-                    className="mt-0.5 text-slate-900"
-                  />
-                  <div className="flex-1">
-                    <div className="font-bold text-slate-900">{tec.nombre}</div>
-                    <div className="text-[11px] text-slate-500 font-mono">{tec.email}</div>
-                    <div className="text-[10px] text-slate-600 capitalize mt-0.5 font-medium">
-                      Especialidad: {tec.area?.replace('_', ' ')}
+              {tecnicos.map((tec) => {
+                const tecMail = tec.email || tec.correo;
+                return (
+                  <label
+                    key={tecMail || tec._id}
+                    className={`flex items-start space-x-2.5 p-2.5 rounded-md border cursor-pointer transition-all ${
+                      selectedEmail === tecMail
+                        ? 'border-slate-900 bg-slate-50 ring-1 ring-slate-900'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="tecnico"
+                      value={tecMail}
+                      checked={selectedEmail === tecMail}
+                      onChange={(e) => setSelectedEmail(e.target.value)}
+                      className="mt-0.5 text-slate-900"
+                    />
+                    <div className="flex-1">
+                      <div className="font-bold text-slate-900">{tec.nombre}</div>
+                      <div className="text-[11px] text-slate-500 font-mono">{tecMail}</div>
+                      <div className="text-[10px] text-slate-600 capitalize mt-0.5 font-medium">
+                        Especialidad: {tec.area?.replace('_', ' ')}
+                      </div>
                     </div>
-                  </div>
-                </label>
-              ))}
+                  </label>
+                );
+              })}
             </div>
           </div>
 

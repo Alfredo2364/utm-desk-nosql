@@ -15,7 +15,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
         ok: true,
         usuarios: [
           {
-            _id: 'rep-01',
+            _id: '660000000000000000000008',
             nombre: 'Alumno Daniel García',
             email: 'alumno.garcia@utm.mx',
             rol: 'reportante',
@@ -24,7 +24,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             departamento_carrera: 'Ingeniería en Computación',
           },
           {
-            _id: 'tec-01',
+            _id: '660000000000000000000005',
             nombre: 'Ing. Roberto Méndez',
             email: 'tecnico.redes@utm.mx',
             rol: 'tecnico',
@@ -33,7 +33,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             id_tecnico: 'TEC-UTM-092',
           },
           {
-            _id: 'tec-02',
+            _id: '660000000000000000000006',
             nombre: 'Téc. Marco Peña',
             email: 'tecnico.infra@utm.mx',
             rol: 'tecnico',
@@ -42,7 +42,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             id_tecnico: 'TEC-UTM-018',
           },
           {
-            _id: 'tec-03',
+            _id: '660000000000000000000007',
             nombre: 'Ing. Daniela Soto',
             email: 'tecnico.sistemas@utm.mx',
             rol: 'tecnico',
@@ -51,7 +51,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             id_tecnico: 'TEC-UTM-045',
           },
           {
-            _id: 'sup-01',
+            _id: '660000000000000000000004',
             nombre: 'Ing. Carlos Mendoza',
             email: 'supervisor.campus@utm.mx',
             rol: 'supervisor',
@@ -59,7 +59,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             cargo: 'Supervisor General de Operaciones de Campus',
           },
           {
-            _id: 'dir-01',
+            _id: '660000000000000000000003',
             nombre: 'Dra. Patricia Arango',
             email: 'directora.academica@utm.mx',
             rol: 'directivo',
@@ -67,7 +67,7 @@ router.get('/usuarios-demo', async (req, res, next) => {
             cargo: 'Directora de División y Planeación Universitaria',
           },
           {
-            _id: 'adm-01',
+            _id: '660000000000000000000002',
             nombre: 'Administrador Maestro UTM',
             email: 'admin.sistemas@utm.mx',
             rol: 'admin',
@@ -75,9 +75,9 @@ router.get('/usuarios-demo', async (req, res, next) => {
             cargo: 'Administrador General del Sistema NoSQL',
           },
           {
-            _id: 'supadm-01',
-            nombre: 'Super Administrador General UTM',
-            email: 'superadmin@utm.mx',
+            _id: '660000000000000000000001',
+            nombre: 'Ing. Lizandro Reyes',
+            email: 'lizandro.reyes@utmetropolitana.edu.mx',
             rol: 'superadmin',
             area: null,
             cargo: 'Super Administrador General — Control Total del Sistema',

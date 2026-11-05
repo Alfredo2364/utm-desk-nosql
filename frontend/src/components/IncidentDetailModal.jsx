@@ -493,9 +493,12 @@ export default function IncidentDetailModal({ codigo, onClose, onIncidentUpdated
           onClose={() => setShowAssignModal(false)}
           incidencia={incidencia}
           usuariosDemo={usuariosDemo}
-          onAssigned={() => {
-            fetchDossier();
-            if (onIncidentUpdated) onIncidentUpdated();
+          onAssigned={(updatedDoc) => {
+            if (updatedDoc && updatedDoc.codigo) {
+              setIncidencia(updatedDoc);
+            }
+            fetchDossier(false);
+            if (onIncidentUpdated) onIncidentUpdated(updatedDoc);
           }}
         />
       )}

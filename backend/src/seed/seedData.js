@@ -8,6 +8,7 @@ const connectDB = require('../config/db');
 
 const demoUsuarios = [
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000001'),
     nombre: 'Ing. Lizandro Reyes',
     email: 'lizandro.reyes@utmetropolitana.edu.mx',
     correo: 'lizandro.reyes@utmetropolitana.edu.mx',
@@ -19,6 +20,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000002'),
     nombre: 'Administrador Maestro UTM',
     email: 'admin.sistemas@utm.mx',
     correo: 'admin.sistemas@utm.mx',
@@ -30,6 +32,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000003'),
     nombre: 'Dra. Patricia Arango',
     email: 'directora.academica@utm.mx',
     correo: 'directora.academica@utm.mx',
@@ -41,6 +44,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000004'),
     nombre: 'Ing. Carlos Mendoza',
     email: 'supervisor.campus@utm.mx',
     correo: 'supervisor.campus@utm.mx',
@@ -52,6 +56,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000005'),
     nombre: 'Luis Hernández Pech (Téc. Cómputo)',
     email: 'tecnico.redes@utm.mx',
     correo: 'tecnico.redes@utm.mx',
@@ -64,6 +69,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000006'),
     nombre: 'Téc. Marco Peña (Téc. Infraestructura)',
     email: 'tecnico.infra@utm.mx',
     correo: 'tecnico.infra@utm.mx',
@@ -76,6 +82,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000007'),
     nombre: 'Ing. Daniela Soto (Téc. Sistemas)',
     email: 'tecnico.sistemas@utm.mx',
     correo: 'tecnico.sistemas@utm.mx',
@@ -88,6 +95,7 @@ const demoUsuarios = [
     activo: true,
   },
   {
+    _id: new mongoose.Types.ObjectId('660000000000000000000008'),
     nombre: 'Alumno Daniel García',
     email: 'alumno.garcia@utm.mx',
     correo: 'alumno.garcia@utm.mx',
