@@ -33,13 +33,20 @@ export default function TecnicoDashboard({
   const [searchTerm, setSearchTerm] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('todas');
 
-  const misAsignadasCount = incidencias.filter(
-    (inc) => inc.tecnico_asignado?.email?.toLowerCase() === currentUser.email?.toLowerCase()
-  ).length;
+  const isAssignedToCurrent = (inc) => {
+    if (!inc || !currentUser) return false;
+    const tecEmail = (inc.tecnico_asignado?.email || '').toLowerCase();
+    const curEmail = (currentUser.email || currentUser.correo || '').toLowerCase();
+    if (tecEmail && curEmail && tecEmail === curEmail) return true;
+    if (currentUser._id && (String(inc.asignadoA) === String(currentUser._id) || String(inc.tecnico_asignado?.id) === String(currentUser._id))) return true;
+    return false;
+  };
+
+  const misAsignadasCount = incidencias.filter(isAssignedToCurrent).length;
 
   const filtradas = incidencias.filter((inc) => {
     if (tabAsignacion === 'mis_asignadas') {
-      if (inc.tecnico_asignado?.email?.toLowerCase() !== currentUser.email?.toLowerCase()) {
+      if (!isAssignedToCurrent(inc)) {
         return false;
       }
     }
@@ -198,8 +205,7 @@ export default function TecnicoDashboard({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filtradas.map((inc) => {
-            const estaAsignadaAMi =
-              inc.tecnico_asignado?.email?.toLowerCase() === currentUser.email?.toLowerCase();
+            const estaAsignadaAMi = isAssignedToCurrent(inc);
             const sinAsignar = !inc.tecnico_asignado?.email;
 
             return (

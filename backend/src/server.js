@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Soporte Serverless: deserializar req.body si viene como JSON string o Buffer
+// Soporte Serverless: deserializar req.body si viene como JSON string o Buffer o rawBody
 app.use((req, res, next) => {
   if (typeof req.body === 'string' && req.body.trim().startsWith('{')) {
     try {
@@ -39,6 +39,11 @@ app.use((req, res, next) => {
   } else if (Buffer.isBuffer(req.body)) {
     try {
       req.body = JSON.parse(req.body.toString('utf-8'));
+      req._body = true;
+    } catch (e) {}
+  } else if ((!req.body || Object.keys(req.body).length === 0) && req.rawBody) {
+    try {
+      req.body = typeof req.rawBody === 'string' ? JSON.parse(req.rawBody) : JSON.parse(req.rawBody.toString('utf-8'));
       req._body = true;
     } catch (e) {}
   }

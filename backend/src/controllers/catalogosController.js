@@ -79,15 +79,22 @@ const updateUsuario = async (req, res, next) => {
   try {
     const { id } = req.params;
     const body = (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body) || {};
-    const { nombre, rol, area, cargo, departamento_carrera, activo, id_tecnico, email, correo } = body;
+    const nombre = body.nombre !== undefined ? body.nombre : req.query?.nombre;
+    const rol = body.rol !== undefined ? body.rol : req.query?.rol;
+    const area = body.area !== undefined ? body.area : req.query?.area;
+    const cargo = body.cargo !== undefined ? body.cargo : req.query?.cargo;
+    const departamento_carrera = body.departamento_carrera !== undefined ? body.departamento_carrera : req.query?.departamento_carrera;
+    const activo = body.activo !== undefined ? body.activo : (req.query?.activo !== undefined ? req.query.activo === 'true' : undefined);
+    const id_tecnico = body.id_tecnico !== undefined ? body.id_tecnico : req.query?.id_tecnico;
+    const email = body.email || body.correo || req.query?.email || req.query?.correo;
 
     const finalArea = rol && rol !== 'tecnico' ? null : area;
-    const cleanEmail = (email || correo || '').trim().toLowerCase();
+    const cleanEmail = (email || '').trim().toLowerCase();
 
     let usuario = null;
 
     // 1. Buscar por _id si no es nulo o indefinido
-    if (id && id !== 'undefined' && id !== 'null') {
+    if (id && id !== 'undefined' && id !== 'null' && mongoose.isValidObjectId(id)) {
       try {
         usuario = await Usuario.findById(id);
       } catch (err) {
@@ -95,7 +102,7 @@ const updateUsuario = async (req, res, next) => {
       }
     }
 
-    // 2. Si no se encontró por ID, buscar por email recibido en el cuerpo
+    // 2. Si no se encontró por ID, buscar por email recibido en el cuerpo o query
     if (!usuario && cleanEmail) {
       usuario = await Usuario.findOne({
         $or: [{ email: cleanEmail }, { correo: cleanEmail }],
@@ -110,9 +117,30 @@ const updateUsuario = async (req, res, next) => {
       });
     }
 
-    // 4. Si aún no se localiza, buscar por nombre exacto
+    // 4. Si aún no se localiza, buscar por nombre exacto o aproximado
     if (!usuario && nombre) {
-      usuario = await Usuario.findOne({ nombre: nombre.trim() });
+      usuario = await Usuario.findOne({
+        nombre: { $regex: new RegExp(`^${escapeRegex(nombre.trim())}$`, 'i') },
+      });
+    }
+
+    // 5. Fallback especial si el usuario aún no estaba persistido en DB pero existe en demoUsuarios
+    if (!usuario) {
+      const { demoUsuarios } = require('../seed/seedData');
+      const demo = demoUsuarios.find((du) => {
+        const dMail = (du.email || du.correo || '').toLowerCase();
+        return (
+          (cleanEmail && dMail === cleanEmail) ||
+          (id && id.includes('@') && dMail === id.toLowerCase()) ||
+          (nombre && du.nombre.toLowerCase().includes(nombre.trim().toLowerCase()))
+        );
+      });
+      if (demo) {
+        usuario = new Usuario({
+          ...demo,
+          _id: mongoose.isValidObjectId(id) ? id : demo._id,
+        });
+      }
     }
 
     if (!usuario) {

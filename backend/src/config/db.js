@@ -67,6 +67,12 @@ async function ensureAtlasSeededIfEmpty() {
   }
 }
 
+const DIRECT_ATLAS_URI =
+  'mongodb://argentmoon221_db_user:kbdWSABdFdJXxRNi@ac-bkabupl-shard-00-00.z7fflwr.mongodb.net:27017,ac-bkabupl-shard-00-01.z7fflwr.mongodb.net:27017,ac-bkabupl-shard-00-02.z7fflwr.mongodb.net:27017/utm_desk_db?ssl=true&replicaSet=atlas-nnfy2c-shard-0&authSource=admin&retryWrites=true&w=majority';
+
+const SRV_ATLAS_URI =
+  'mongodb+srv://argentmoon221_db_user:kbdWSABdFdJXxRNi@cluster0.z7fflwr.mongodb.net/utm_desk_db?retryWrites=true&w=majority';
+
 const connectDB = async () => {
   // Inicializar el respaldo en memoria para evitar cualquier 'buffering timed out'
   initializeMemoryFallback();
@@ -76,22 +82,25 @@ const connectDB = async () => {
     return true;
   }
 
-  const mongoURI =
-    process.env.MONGO_URI ||
-    process.env.MONGODB_URI ||
-    'mongodb+srv://argentmoon221_db_user:kbdWSABdFdJXxRNi@cluster0.z7fflwr.mongodb.net/utm_desk_db?retryWrites=true&w=majority';
-
-  if (!mongoURI || mongoURI.includes('tu_usuario')) {
-    console.warn('⚠️ [MongoDB] MONGO_URI no configurado. Operando con base de datos en memoria.');
-    return false;
-  }
+  const envURI = process.env.MONGO_URI || process.env.MONGODB_URI;
+  const isDefaultOrSRV = !envURI || envURI.includes('cluster0.z7fflwr.mongodb.net') || envURI.startsWith('mongodb+srv://');
+  const primaryURI = isDefaultOrSRV ? DIRECT_ATLAS_URI : envURI;
+  const fallbackURI = isDefaultOrSRV ? (envURI || SRV_ATLAS_URI) : DIRECT_ATLAS_URI;
 
   if (!cached.promise) {
-    cached.promise = mongoose
-      .connect(mongoURI, {
+    const tryConnect = async (uri) => {
+      return mongoose.connect(uri, {
         serverSelectionTimeoutMS: 5000,
-        maxPoolSize: 5, // Óptimo para funciones Serverless en Vercel
+        connectTimeoutMS: 6000,
+        maxPoolSize: 5,
         dbName: 'utm_desk_db',
+      });
+    };
+
+    cached.promise = tryConnect(primaryURI)
+      .catch((err) => {
+        console.warn('⚠️ [MongoDB Atlas] Primer intento falló, reintentando con URI alternativa:', err.message);
+        return tryConnect(fallbackURI);
       })
       .then(async (mongooseInstance) => {
         cached.conn = mongooseInstance;

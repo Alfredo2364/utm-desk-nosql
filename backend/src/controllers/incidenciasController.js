@@ -137,6 +137,45 @@ const buscarPorCodigo = async (rawCodigo) => {
     }
   }
 
+  // 5. Búsqueda por _id si es ObjectId válido
+  if (mongoose.isValidObjectId(raw)) {
+    try {
+      inc = await Incidencia.findById(raw);
+      if (inc) return inc;
+    } catch {
+      // continuar
+    }
+  }
+
+  // 6. Búsqueda flexible por substring de código
+  try {
+    inc = await Incidencia.findOne({
+      codigo: { $regex: new RegExp(escapeRegex(upper), 'i') },
+    });
+    if (inc) return inc;
+  } catch {
+    // continuar
+  }
+
+  // 7. Fallback de contingencia a demoIncidencias
+  try {
+    const { demoIncidencias } = require('../seed/seedData');
+    const demo = demoIncidencias.find((d) => {
+      const dCod = (d.codigo || d.codigo_unico || '').toUpperCase();
+      return (
+        dCod === upper ||
+        dCod === withHyphen ||
+        (mongoose.isValidObjectId(raw) && String(d._id) === raw) ||
+        dCod.includes(upper)
+      );
+    });
+    if (demo) {
+      return new Incidencia(demo);
+    }
+  } catch {
+    // continuar
+  }
+
   return null;
 };
 
@@ -162,11 +201,16 @@ const getIncidencias = async (req, res, next) => {
         ...(req.user?._id ? [{ reportadoPor: req.user._id }] : []),
       ];
     } else if (rol === 'tecnico') {
-      if (areaNormalizada && areaNormalizada !== 'general') {
-        filtro.categoria = areaNormalizada;
-      }
       if (asignacion === 'mis_asignadas') {
+        // En "Mis Asignadas", el técnico ve todas las incidencias turnadas a su cuenta personal
         filtro.$or = [
+          { 'tecnico_asignado.email': emailUsuario },
+          ...(req.user?._id ? [{ asignadoA: req.user._id }] : []),
+        ];
+      } else if (areaNormalizada && areaNormalizada !== 'general') {
+        // En la cola general del área, ve las de su especialidad O cualquier ticket asignado a él
+        filtro.$or = [
+          { categoria: areaNormalizada },
           { 'tecnico_asignado.email': emailUsuario },
           ...(req.user?._id ? [{ asignadoA: req.user._id }] : []),
         ];
@@ -311,7 +355,16 @@ const getIncidenciaByCodigo = async (req, res, next) => {
         });
       }
     } else if (rol === 'tecnico') {
-      if (areaNormalizada && areaNormalizada !== 'general' && incidencia.categoria !== areaNormalizada) {
+      const estaAsignadoAEsteTecnico =
+        incidencia.tecnico_asignado?.email?.toLowerCase() === emailUsuario ||
+        (req.user?._id && String(incidencia.asignadoA) === String(req.user._id));
+
+      if (
+        !estaAsignadoAEsteTecnico &&
+        areaNormalizada &&
+        areaNormalizada !== 'general' &&
+        incidencia.categoria !== areaNormalizada
+      ) {
         return res.status(403).json({
           ok: false,
           error: `Acceso denegado (Tabla 4): Este expediente pertenece al área '${incidencia.categoria}' y tu perfil técnico corresponde a '${areaNormalizada}'.`,
@@ -710,24 +763,41 @@ const asignarTecnico = async (req, res, next) => {
   try {
     const { codigo } = req.params;
     const body = (typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body) || {};
-    let tecnicoId = body.tecnicoId || body.tecnico_id || body.id;
-    let nombre = body.nombre || body.tecnico_nombre || body.name;
-    let email = body.email || body.tecnico_email || body.correo;
-    let id_tecnico = body.id_tecnico || body.tecnico_codigo;
-    let area = body.area || body.tecnico_area;
+    let tecnicoId = body.tecnicoId || body.tecnico_id || body.id || req.query?.tecnicoId || req.query?.tecnico_id || req.query?.id;
+    let nombre = body.nombre || body.tecnico_nombre || body.name || req.query?.nombre || req.query?.tecnico_nombre;
+    let email = body.email || body.tecnico_email || body.correo || req.query?.email || req.query?.tecnico_email || req.query?.correo;
+    let id_tecnico = body.id_tecnico || body.tecnico_codigo || req.query?.id_tecnico || req.query?.tecnico_codigo;
+    let area = body.area || body.tecnico_area || req.query?.area || req.query?.tecnico_area;
 
-    // Respaldo desde query params si por algún motivo no vinieron en el cuerpo
-    if (!email && req.query?.email) email = req.query.email;
-    if (!tecnicoId && req.query?.tecnicoId) tecnicoId = req.query.tecnicoId;
-    if (!nombre && req.query?.nombre) nombre = req.query.nombre;
+    if (body.tecnico && typeof body.tecnico === 'object') {
+      tecnicoId = tecnicoId || body.tecnico.id || body.tecnico._id;
+      nombre = nombre || body.tecnico.nombre;
+      email = email || body.tecnico.email || body.tecnico.correo;
+      area = area || body.tecnico.area;
+      id_tecnico = id_tecnico || body.tecnico.id_tecnico;
+    }
 
-    // Si viene email pero faltan otros campos, buscar en la colección de usuarios
+    // Buscar incidencia primero
+    const incidencia = await buscarPorCodigo(codigo);
+    if (!incidencia) {
+      return res.status(404).json({
+        ok: false,
+        error: `No se encontró la incidencia ${codigo.toUpperCase()}`,
+      });
+    }
+
+    const { demoUsuarios } = require('../seed/seedData');
+
+    // Si viene email pero faltan otros campos, buscar en la colección de usuarios o demoUsuarios
     if (email && (!nombre || !tecnicoId || !area)) {
       try {
         const cleanEmail = email.trim().toLowerCase();
-        const u = await Usuario.findOne({
+        let u = await Usuario.findOne({
           $or: [{ email: cleanEmail }, { correo: cleanEmail }],
         });
+        if (!u) {
+          u = demoUsuarios.find((du) => (du.email || du.correo || '').toLowerCase() === cleanEmail);
+        }
         if (u) {
           tecnicoId = tecnicoId || u._id;
           nombre = nombre || u.nombre;
@@ -739,18 +809,37 @@ const asignarTecnico = async (req, res, next) => {
       }
     }
 
+    // Si viene nombre pero no email
+    if (!email && nombre) {
+      try {
+        const u = demoUsuarios.find((du) => du.nombre.toLowerCase().includes(nombre.trim().toLowerCase()));
+        if (u) {
+          email = u.email;
+          tecnicoId = tecnicoId || u._id;
+          area = area || u.area;
+          id_tecnico = id_tecnico || u.id_tecnico || 'TEC-UTM';
+        }
+      } catch (e) {}
+    }
+
+    // Si aún no hay técnico identificado, auto-seleccionar al especialista del área del ticket
+    if (!email && !nombre && !tecnicoId) {
+      const cat = incidencia.categoria || 'computo_telecomunicaciones';
+      const tecArea = demoUsuarios.find((du) => du.rol === 'tecnico' && du.area === cat) ||
+        demoUsuarios.find((du) => du.rol === 'tecnico');
+      if (tecArea) {
+        email = tecArea.email;
+        nombre = tecArea.nombre;
+        tecnicoId = tecArea._id;
+        area = tecArea.area;
+        id_tecnico = tecArea.id_tecnico || 'TEC-UTM';
+      }
+    }
+
     if (!email && !nombre && !tecnicoId) {
       return res.status(400).json({
         ok: false,
         error: 'Se requiere proporcionar los datos del técnico a asignar.',
-      });
-    }
-
-    const incidencia = await buscarPorCodigo(codigo);
-    if (!incidencia) {
-      return res.status(404).json({
-        ok: false,
-        error: `No se encontró la incidencia ${codigo.toUpperCase()}`,
       });
     }
 

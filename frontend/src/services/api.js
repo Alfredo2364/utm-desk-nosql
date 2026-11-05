@@ -221,7 +221,15 @@ export async function addRevision(codigo, revisionData, customHeaders = null) {
  */
 export async function asignarTecnico(codigo, tecnicoData, customHeaders = null) {
   const headers = customHeaders || getStoredHeaders();
-  const response = await fetch(`${API_BASE_URL}/incidencias/${codigo}/asignar`, {
+  const qParams = new URLSearchParams();
+  if (tecnicoData.email || tecnicoData.tecnico_email) qParams.set('email', tecnicoData.email || tecnicoData.tecnico_email);
+  if (tecnicoData.tecnicoId || tecnicoData.id) qParams.set('tecnicoId', tecnicoData.tecnicoId || tecnicoData.id);
+  if (tecnicoData.nombre || tecnicoData.tecnico_nombre) qParams.set('nombre', tecnicoData.nombre || tecnicoData.tecnico_nombre);
+  if (tecnicoData.area || tecnicoData.tecnico_area) qParams.set('area', tecnicoData.area || tecnicoData.tecnico_area);
+  if (tecnicoData.id_tecnico) qParams.set('id_tecnico', tecnicoData.id_tecnico);
+  const qs = qParams.toString() ? `?${qParams.toString()}` : '';
+
+  const response = await fetch(`${API_BASE_URL}/incidencias/${encodeURIComponent(codigo)}/asignar${qs}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
@@ -298,7 +306,14 @@ export async function createUsuario(data, customHeaders = null) {
 
 export async function updateUsuario(id, data, customHeaders = null) {
   const headers = customHeaders || getStoredHeaders();
-  const response = await fetch(`${API_BASE_URL}/usuarios/${id}`, {
+  const qParams = new URLSearchParams();
+  if (data.email) qParams.set('email', data.email);
+  if (data.rol) qParams.set('rol', data.rol);
+  if (data.area) qParams.set('area', data.area);
+  if (data.nombre) qParams.set('nombre', data.nombre);
+  const qs = qParams.toString() ? `?${qParams.toString()}` : '';
+
+  const response = await fetch(`${API_BASE_URL}/usuarios/${encodeURIComponent(id)}${qs}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(data),
