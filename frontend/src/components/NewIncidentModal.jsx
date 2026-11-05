@@ -15,15 +15,83 @@ import {
   MapPin,
   Flame,
   Clock,
+  Lock,
 } from 'lucide-react';
-import { createIncidencia } from '../services/api';
+import { createIncidencia, getEdificios } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+
+const CANONICAL_EDIFICIOS = [
+  {
+    clave: 'ED-A',
+    codigo: 'ED-A',
+    nombre: 'Edificio A - Tecnologías de la Información',
+    pisos: 3,
+    aulas: [
+      { codigo: 'A-101', nombre: 'Aula 101', piso: 'Planta Baja' },
+      { codigo: 'A-102', nombre: 'Laboratorio de cómputo', piso: 'Planta Baja' },
+      { codigo: 'L-02', nombre: 'Laboratorio de Redes y Telecomunicaciones L-02', piso: 'Piso 2' },
+    ],
+  },
+  {
+    clave: 'ED-B',
+    codigo: 'ED-B',
+    nombre: 'Edificio B - Ciencias Básicas y Laboratorios',
+    pisos: 2,
+    aulas: [
+      { codigo: 'B-101', nombre: 'Aula Magna B-101', piso: 'Planta Baja' },
+      { codigo: 'B-204', nombre: 'Laboratorio B-204', piso: 'Piso 2' },
+    ],
+  },
+  {
+    clave: 'ED-C',
+    codigo: 'ED-C',
+    nombre: 'Edificio C - Servicios Académicos y Control Escolar',
+    pisos: 2,
+    aulas: [
+      { codigo: 'C-001', nombre: 'Sala de Captura Docente y Control Escolar C-001', piso: 'Planta Baja' },
+      { codigo: 'ESC-03', nombre: 'Ventanilla 3 de Control Escolar', piso: 'Piso 1' },
+    ],
+  },
+  {
+    clave: 'ED-D',
+    codigo: 'ED-D',
+    nombre: 'Edificio D - Aulas Multimedia e Innovación',
+    pisos: 2,
+    aulas: [
+      { codigo: 'D-204', nombre: 'Aula Inteligente D-204', piso: 'Piso 2' },
+      { codigo: 'D-205', nombre: 'Aula de Seminarios D-205', piso: 'Piso 2' },
+    ],
+  },
+];
+
+function formatRolDisplay(rol) {
+  const r = (rol || '').toLowerCase().trim();
+  const map = {
+    reportante: 'Estudiante / Reportante',
+    estudiante: 'Estudiante Universitario',
+    docente: 'Docente / Investigador',
+    administrativo: 'Personal Administrativo',
+    tecnico: 'Técnico Especialista',
+    supervisor: 'Supervisor de Campus',
+    directivo: 'Directivo de la UTM',
+    admin: 'Administrador Maestro',
+    superadmin: 'Super Administrador General',
+  };
+  return map[r] || rol || 'Estudiante';
+}
 
 export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated }) {
   const { currentUser } = useAuth();
   const [categoria, setCategoria] = useState('computo_telecomunicaciones');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Catálogo de Edificios precargados para selección rápida
+  const [edificiosList, setEdificiosList] = useState(CANONICAL_EDIFICIOS);
+  const [selectedEdificioKey, setSelectedEdificioKey] = useState('ED-A');
+  const [selectedAulaKey, setSelectedAulaKey] = useState('A-101');
+  const [isCustomEdificio, setIsCustomEdificio] = useState(false);
+  const [isCustomAula, setIsCustomAula] = useState(false);
 
   // Datos base
   const [formData, setFormData] = useState({
@@ -32,8 +100,8 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
     prioridad: 'media',
     canal_origen: 'portal_autoservicio',
     edificio: 'Edificio A - Tecnologías de la Información',
-    aula_laboratorio: 'Laboratorio de Cómputo L-01',
-    piso: 'Piso 1',
+    aula_laboratorio: 'Aula 101',
+    piso: 'Planta Baja',
     referencias: '',
     reportante_nombre: currentUser?.nombre || '',
     reportante_email: currentUser?.email || '',
@@ -42,16 +110,83 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
   });
 
   useEffect(() => {
+    getEdificios()
+      .then((data) => {
+        if (data && data.edificios && data.edificios.length > 0) {
+          setEdificiosList(data.edificios);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (currentUser) {
       setFormData((prev) => ({
         ...prev,
         reportante_nombre: currentUser.nombre || '',
         reportante_email: currentUser.email || '',
         reportante_rol: currentUser.rol === 'reportante' ? 'estudiante' : currentUser.rol || 'estudiante',
-        reportante_departamento: currentUser.departamento_carrera || '',
+        reportante_departamento: currentUser.departamento_carrera || prev.reportante_departamento || '',
       }));
     }
   }, [currentUser]);
+
+  const handleEdificioSelect = (e) => {
+    const val = e.target.value;
+    if (val === '__custom__') {
+      setIsCustomEdificio(true);
+      setIsCustomAula(true);
+      setFormData((prev) => ({
+        ...prev,
+        edificio: '',
+        aula_laboratorio: '',
+        piso: '',
+      }));
+      return;
+    }
+
+    setIsCustomEdificio(false);
+    setSelectedEdificioKey(val);
+
+    const edif = edificiosList.find(
+      (item) => (item.clave || item.codigo) === val || item.nombre === val
+    );
+    if (edif) {
+      const edifNombre = edif.nombre || edif.clave;
+      const firstAula = edif.aulas && edif.aulas.length > 0 ? edif.aulas[0] : null;
+      setIsCustomAula(false);
+      setSelectedAulaKey(firstAula ? (firstAula.codigo || firstAula.nombre) : '');
+      setFormData((prev) => ({
+        ...prev,
+        edificio: edifNombre,
+        aula_laboratorio: firstAula ? firstAula.nombre : 'Aula General',
+        piso: firstAula ? (firstAula.piso || 'Planta Baja') : 'Planta Baja',
+      }));
+    }
+  };
+
+  const handleAulaSelect = (e) => {
+    const val = e.target.value;
+    if (val === '__custom__') {
+      setIsCustomAula(true);
+      setFormData((prev) => ({ ...prev, aula_laboratorio: '', piso: '' }));
+      return;
+    }
+
+    setIsCustomAula(false);
+    setSelectedAulaKey(val);
+    const edif = edificiosList.find(
+      (item) => (item.clave || item.codigo) === selectedEdificioKey || item.nombre === selectedEdificioKey
+    );
+    const aula = edif?.aulas?.find((a) => (a.codigo || a.nombre) === val);
+    if (aula) {
+      setFormData((prev) => ({
+        ...prev,
+        aula_laboratorio: aula.nombre,
+        piso: aula.piso || prev.piso || 'Planta Baja',
+      }));
+    }
+  };
 
   // Campos polimórficos
   const [detalleComputo, setDetalleComputo] = useState({
@@ -288,38 +423,122 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Ubicación */}
             <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2.5">
-              <div className="flex items-center space-x-1.5 text-slate-800 font-bold border-b border-slate-100 pb-1.5">
-                <Building2 className="w-4 h-4 text-slate-500" />
-                <span className="text-[11px] uppercase tracking-wider">Ubicación Física</span>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                <div className="flex items-center space-x-1.5 text-slate-800 font-bold">
+                  <Building2 className="w-4 h-4 text-slate-500" />
+                  <span className="text-[11px] uppercase tracking-wider">Ubicación Física</span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  Catálogo Campus
+                </span>
               </div>
+
               <div>
-                <label className="block text-slate-600 mb-1">Edificio *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.edificio}
-                  onChange={(e) => setFormData({ ...formData, edificio: e.target.value })}
-                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-slate-600 mb-1">Aula / Laboratorio *</label>
+                <label className="block text-slate-600 font-medium mb-1">
+                  Edificio del Campus *
+                </label>
+                <select
+                  value={isCustomEdificio ? '__custom__' : selectedEdificioKey}
+                  onChange={handleEdificioSelect}
+                  className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold focus:border-slate-900 focus:ring-1 focus:ring-slate-900 bg-white"
+                >
+                  {edificiosList.map((edif) => {
+                    const key = edif.clave || edif.codigo || edif.nombre;
+                    return (
+                      <option key={key} value={key}>
+                        {edif.nombre} ({edif.clave || edif.codigo})
+                      </option>
+                    );
+                  })}
+                  <option value="__custom__">+ Otro edificio / ubicación manual...</option>
+                </select>
+                {isCustomEdificio && (
                   <input
                     type="text"
                     required
-                    value={formData.aula_laboratorio}
-                    onChange={(e) => setFormData({ ...formData, aula_laboratorio: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
+                    placeholder="Escriba el nombre del edificio..."
+                    value={formData.edificio}
+                    onChange={(e) => setFormData({ ...formData, edificio: e.target.value })}
+                    className="mt-1.5 w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 bg-slate-50"
                   />
-                </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 mb-1">Piso / Nivel</label>
+                  <label className="block text-slate-600 font-medium mb-1">
+                    Aula / Laboratorio *
+                  </label>
+                  {!isCustomEdificio && !isCustomAula ? (
+                    <select
+                      value={selectedAulaKey}
+                      onChange={handleAulaSelect}
+                      className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-medium focus:border-slate-900 bg-white"
+                    >
+                      {(() => {
+                        const currentEdif = edificiosList.find(
+                          (item) => (item.clave || item.codigo) === selectedEdificioKey || item.nombre === selectedEdificioKey
+                        );
+                        const aulas = currentEdif?.aulas || [];
+                        return (
+                          <>
+                            {aulas.map((a) => {
+                              const aKey = a.codigo || a.nombre;
+                              return (
+                                <option key={aKey} value={aKey}>
+                                  {a.nombre} ({a.codigo})
+                                </option>
+                              );
+                            })}
+                            <option value="__custom__">+ Otra aula / manual...</option>
+                          </>
+                        );
+                      })()}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Aula 101, Cubículo 4..."
+                      value={formData.aula_laboratorio}
+                      onChange={(e) => setFormData({ ...formData, aula_laboratorio: e.target.value })}
+                      className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 bg-white"
+                    />
+                  )}
+                  {isCustomAula && !isCustomEdificio && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomAula(false);
+                        const currentEdif = edificiosList.find(
+                          (item) => (item.clave || item.codigo) === selectedEdificioKey || item.nombre === selectedEdificioKey
+                        );
+                        if (currentEdif?.aulas?.[0]) {
+                          setSelectedAulaKey(currentEdif.aulas[0].codigo || currentEdif.aulas[0].nombre);
+                          setFormData((prev) => ({
+                            ...prev,
+                            aula_laboratorio: currentEdif.aulas[0].nombre,
+                            piso: currentEdif.aulas[0].piso || 'Planta Baja',
+                          }));
+                        }
+                      }}
+                      className="mt-1 text-[10px] text-slate-500 hover:text-slate-800 underline block"
+                    >
+                      ← Volver a lista de aulas
+                    </button>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-slate-600 font-medium mb-1">
+                    Piso / Nivel
+                  </label>
                   <input
                     type="text"
                     value={formData.piso}
                     onChange={(e) => setFormData({ ...formData, piso: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
+                    placeholder="Ej. Planta Baja, Piso 1..."
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 bg-white"
                   />
                 </div>
               </div>
@@ -327,45 +546,64 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
 
             {/* Solicitante */}
             <div className="p-3.5 rounded-lg border border-slate-200 bg-white space-y-2.5">
-              <div className="flex items-center space-x-1.5 text-slate-800 font-bold border-b border-slate-100 pb-1.5">
-                <User className="w-4 h-4 text-slate-500" />
-                <span className="text-[11px] uppercase tracking-wider">Datos del Solicitante</span>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                <div className="flex items-center space-x-1.5 text-slate-800 font-bold">
+                  <User className="w-4 h-4 text-slate-500" />
+                  <span className="text-[11px] uppercase tracking-wider">Datos del Solicitante</span>
+                </div>
+                <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  <Lock className="w-2.5 h-2.5 inline" /> Rol Fijado
+                </span>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 mb-1">Nombre Completo *</label>
+                  <label className="flex items-center justify-between text-slate-600 mb-1">
+                    <span>Nombre Completo *</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      <Lock className="w-2.5 h-2.5 inline mr-0.5" /> Sesión
+                    </span>
+                  </label>
                   <input
                     type="text"
-                    required
+                    readOnly
+                    disabled
                     value={formData.reportante_nombre}
-                    onChange={(e) => setFormData({ ...formData, reportante_nombre: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-100 text-slate-700 text-xs font-semibold cursor-not-allowed select-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-600 mb-1">Correo Institucional *</label>
+                  <label className="flex items-center justify-between text-slate-600 mb-1">
+                    <span>Correo Institucional *</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      <Lock className="w-2.5 h-2.5 inline mr-0.5" /> Verificado
+                    </span>
+                  </label>
                   <input
                     type="email"
-                    required
+                    readOnly
+                    disabled
                     value={formData.reportante_email}
-                    onChange={(e) => setFormData({ ...formData, reportante_email: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 font-mono"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-100 text-slate-700 text-xs font-mono cursor-not-allowed select-none"
                   />
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-slate-600 mb-1">Rol Campus</label>
-                  <select
-                    value={formData.reportante_rol}
-                    onChange={(e) => setFormData({ ...formData, reportante_rol: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
-                  >
-                    <option value="estudiante">Estudiante</option>
-                    <option value="docente">Docente</option>
-                    <option value="administrativo">Administrativo</option>
-                    <option value="tecnico">Técnico</option>
-                  </select>
+                  <label className="flex items-center justify-between text-slate-600 mb-1">
+                    <span>Rol Campus</span>
+                    <span className="text-[10px] text-slate-400 font-mono flex items-center gap-0.5">
+                      <Lock className="w-2.5 h-2.5 inline text-slate-400" /> Fijo
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    disabled
+                    value={formatRolDisplay(currentUser?.rol)}
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-100 text-slate-700 text-xs font-semibold cursor-not-allowed select-none"
+                  />
                 </div>
                 <div>
                   <label className="block text-slate-600 mb-1">Departamento / Carrera</label>
@@ -373,7 +611,8 @@ export default function NewIncidentModal({ isOpen, onClose, onIncidentCreated })
                     type="text"
                     value={formData.reportante_departamento}
                     onChange={(e) => setFormData({ ...formData, reportante_departamento: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
+                    placeholder="Ej. Ing. en Computación"
+                    className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900 bg-white"
                   />
                 </div>
               </div>

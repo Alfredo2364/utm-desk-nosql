@@ -9,6 +9,7 @@ import {
   PlusCircle,
   ChevronDown,
   ChevronUp,
+  Lock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -101,25 +102,34 @@ export default function TimelineReviews({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
             <div>
-              <label className="block text-slate-600 font-medium mb-1">Nombre del Técnico *</label>
+              <label className="flex items-center justify-between text-slate-600 font-medium mb-1">
+                <span>Nombre del Técnico *</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  <Lock className="w-2.5 h-2.5 inline mr-0.5" /> Fijo
+                </span>
+              </label>
               <input
                 type="text"
-                required
+                readOnly
+                disabled
                 value={formData.tecnico_nombre}
-                onChange={(e) => setFormData({ ...formData, tecnico_nombre: e.target.value })}
-                placeholder="Ej. Ing. Carlos Vega"
-                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs focus:border-slate-900"
+                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-100 text-slate-700 text-xs font-semibold cursor-not-allowed select-none"
               />
             </div>
 
             <div>
-              <label className="block text-slate-600 font-medium mb-1">ID Técnico</label>
+              <label className="flex items-center justify-between text-slate-600 font-medium mb-1">
+                <span>ID Técnico</span>
+                <span className="text-[10px] text-slate-400 font-mono">
+                  <Lock className="w-2.5 h-2.5 inline mr-0.5" /> Fijo
+                </span>
+              </label>
               <input
                 type="text"
+                readOnly
+                disabled
                 value={formData.tecnico_id}
-                onChange={(e) => setFormData({ ...formData, tecnico_id: e.target.value })}
-                placeholder="Ej. TEC-UTM-089"
-                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-mono focus:border-slate-900"
+                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 bg-slate-100 text-slate-700 text-xs font-mono cursor-not-allowed select-none"
               />
             </div>
 
@@ -128,7 +138,7 @@ export default function TimelineReviews({
               <select
                 value={formData.estado_asignado}
                 onChange={(e) => setFormData({ ...formData, estado_asignado: e.target.value })}
-                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold focus:border-slate-900"
+                className="w-full px-2.5 py-1.5 rounded-md border border-slate-300 text-xs font-semibold focus:border-slate-900 bg-white"
               >
                 <option value="en_proceso">En Proceso (en_proceso)</option>
                 <option value="asignada">Asignada</option>
