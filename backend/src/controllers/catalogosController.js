@@ -1,5 +1,10 @@
+const mongoose = require('mongoose');
 const Usuario = require('../models/Usuario');
 const Edificio = require('../models/Edificio');
+
+function escapeRegex(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 // ==================== USUARIOS (CRUD ADMIN / SUPERADMIN) ====================
 
